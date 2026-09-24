@@ -1,0 +1,16 @@
+# Replit configuration for ALYAS Travel.
+# Workspace "Run" starts the dev server; Deployments build and run the production server.
+modules = ["nodejs-22"]
+run = ["npm", "run", "dev", "--", "-H", "0.0.0.0", "-p", "3000"]
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
+
+[[ports]]
+localPort = 3000
+externalPort = 80

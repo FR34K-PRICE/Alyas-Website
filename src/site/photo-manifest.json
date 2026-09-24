@@ -1,0 +1,72 @@
+{
+  "hero": {
+    "width": 3200,
+    "height": 2133,
+    "widths": [
+      1280,
+      1920,
+      2560
+    ]
+  },
+  "coast": {
+    "width": 2200,
+    "height": 2933,
+    "widths": [
+      640,
+      1100,
+      1600
+    ]
+  },
+  "hiker": {
+    "width": 2200,
+    "height": 3300,
+    "widths": [
+      640,
+      1100,
+      1600
+    ]
+  },
+  "road": {
+    "width": 2400,
+    "height": 1600,
+    "widths": [
+      800,
+      1400,
+      2000
+    ]
+  },
+  "window": {
+    "width": 1800,
+    "height": 2400,
+    "widths": [
+      640,
+      1100,
+      1600
+    ]
+  },
+  "city": {
+    "width": 2400,
+    "height": 1600,
+    "widths": [
+      800,
+      1400,
+      2000
+    ]
+  },
+  "flowers": {
+    "width": 2000,
+    "height": 2993,
+    "widths": [
+      640,
+      1100,
+      1600
+    ]
+  },
+  "aircraft": {
+    "width": 720,
+    "height": 412,
+    "widths": [
+      720
+    ]
+  }
+}
