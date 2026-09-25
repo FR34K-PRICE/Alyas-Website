@@ -1602,3 +1602,10 @@ html[lang="ar"] .also-copy p {
     scroll-padding-bottom: 92px;
   }
 }
+
+/* While the mobile menu is open the contact bar is out of the way: hidden visually and from screen readers and Tab. */
+@media (max-width: 767px) {
+  body:has(.mobile-panel:not([hidden])) .dock {
+    visibility: hidden;
+  }
+}

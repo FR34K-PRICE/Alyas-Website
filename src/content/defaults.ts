@@ -37,8 +37,8 @@ export const DEFAULTS: Partial<Record<KindKey, any>> = {
     hero: {
       headline: bi("Explore", "استكشف"),
       sub: bi(
-        "ALYAS Travel arranges flights, hotels, visa assistance, transportation and tailored trips from Baghdad.",
-        "الياس للسفر من بغداد: نرتّب لك تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل والرحلات المصمَّمة لك.",
+        "ALYAS Travel, based in Baghdad, arranges flights, hotels, visa assistance, transportation and tailored trips.",
+        "الياس للسفر، ومقرّها بغداد، ترتّب لك تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل والرحلات المصمَّمة.",
       ),
       primaryCta: bi("Plan Your Trip", "خطّط لرحلتك"),
     },
@@ -167,6 +167,11 @@ export const LEGACY_DEFAULTS: { kind: KindKey; path: string[]; old: { ar: string
       {
         en: "Flights, hotels, visa assistance and transport, arranged by our team in Baghdad.",
         ar: "تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل، ينظّمها فريقنا في بغداد.",
+      },
+      {
+        // the wording of the previous branch commit; upgraded too, so nobody keeps it by accident
+        en: "ALYAS Travel arranges flights, hotels, visa assistance, transportation and tailored trips from Baghdad.",
+        ar: "الياس للسفر من بغداد: نرتّب لك تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل والرحلات المصمَّمة لك.",
       },
     ],
   },

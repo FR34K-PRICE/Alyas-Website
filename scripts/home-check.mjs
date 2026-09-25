@@ -238,8 +238,13 @@ if (MUTATE) {
     // A. starter wording is upgraded; edited wording is preserved exactly
     ok("an untouched older starter sentence is stored, as an older site would have it", await setHomeSub(OLD));
     const u = await get("/en"), ua = await get("/ar");
-    ok("…visitors see the NEW default wording (English)", heroSub(u.text).startsWith("ALYAS Travel arranges flights, hotels, visa assistance, transportation"), heroSub(u.text));
-    ok("…visitors see the NEW default wording (Arabic)", heroSub(ua.text).startsWith("الياس للسفر من بغداد"), heroSub(ua.text));
+    ok("…visitors see the NEW default wording (English)", heroSub(u.text).startsWith("ALYAS Travel, based in Baghdad, arranges flights, hotels, visa assistance"), heroSub(u.text));
+    ok("…visitors see the NEW default wording (Arabic)", heroSub(ua.text).startsWith("الياس للسفر، ومقرّها بغداد"), heroSub(ua.text));
+    const PREV = {
+      en: "ALYAS Travel arranges flights, hotels, visa assistance, transportation and tailored trips from Baghdad.",
+      ar: "الياس للسفر من بغداد: نرتّب لك تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل والرحلات المصمَّمة لك.",
+    };
+    ok("the immediately previous shipped sentence is upgraded as well", (await setHomeSub(PREV)) && heroSub((await get("/en")).text).startsWith("ALYAS Travel, based in Baghdad") && heroSub((await get("/ar")).text).startsWith("الياس للسفر، ومقرّها"));
     const custom = { en: "Your trip, handled by people who know Baghdad.", ar: "رحلتك بيد أناس يعرفون بغداد." };
     ok("an administrator edits the hero sentence", await setHomeSub(custom));
     const c = await get("/en"), ca = await get("/ar");
@@ -247,7 +252,7 @@ if (MUTATE) {
     ok("the edited Arabic sentence is shown exactly as written", decode(heroSub(ca.text)) === custom.ar, heroSub(ca.text));
     ok("only one language edited: the other is kept exactly as stored (not upgraded)", await setHomeSub({ en: custom.en, ar: OLD.ar }));
     ok("…the Arabic older text is preserved when only English was edited", heroSub((await get("/ar")).text) === OLD.ar);
-    ok("empty stored wording falls back to the current default", (await setHomeSub({ en: "", ar: "" })) && heroSub((await get("/en")).text).startsWith("ALYAS Travel arranges"));
+    ok("empty stored wording falls back to the current default", (await setHomeSub({ en: "", ar: "" })) && heroSub((await get("/en")).text).startsWith("ALYAS Travel, based in Baghdad"));
 
     // B. contact validation and consistency
     const bad = [
@@ -280,13 +285,15 @@ if (MUTATE) {
     ok("external WhatsApp links open safely (noopener noreferrer) and announce the new tab", new RegExp(`href="${WA}" target="_blank" rel="noopener noreferrer"`).test(e.text) && e.text.includes("(opens in a new tab)") && a.text.includes("(يفتح في نافذة جديدة)"));
     ok("tel: and mailto: links do not open a new tab", !/href="tel:[^"]*" target=/.test(e.text) && !/href="mailto:[^"]*" target=/.test(e.text));
     const ld = JSON.parse(decode(meta(e.text, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/)));
-    ok("structured data: telephone and email are the normalised configured values", ld.telephone === "07701234567" && ld.email === "info@alyas-check.example", JSON.stringify({ t: ld.telephone, e: ld.email }));
+    ok("structured data: a LOCAL phone number is left out (ambiguous), the valid email is included", ld.telephone === undefined && ld.email === "info@alyas-check.example", JSON.stringify({ t: ld.telephone, e: ld.email }));
     ok("no other phone, email or WhatsApp value appears anywhere", (e.text.match(/wa\.me\/\d+/g) || []).every((m) => m === "wa.me/9647701234567") && (e.text.match(/href="tel:[^"]+"/g) || []).every((m) => m === 'href="tel:07701234567"'));
 
     const r00 = await setContact({ whatsapp: "00964 770 000 0000", phone: "+964-770-000-0000" });
     ok("00-prefixed WhatsApp and +-prefixed phone are accepted", r00.saved);
     const e2 = await get("/en");
     ok("00964… becomes wa.me/964… and +964… stays as a tel: link", e2.text.includes("https://wa.me/9647700000000") && e2.text.includes('href="tel:+9647700000000"'));
+    const ld2 = JSON.parse(decode(meta(e2.text, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/)));
+    ok("structured data: an international phone number is included exactly as normalised", ld2.telephone === "+9647700000000", JSON.stringify(ld2.telephone));
 
     const onlyPhone = await setContact({ phone: "+964 770 000 0000" });
     ok("phone only: hero shows Call us (English and Arabic)", onlyPhone.saved && heroCopy((await get("/en")).text).includes('href="tel:+9647700000000"') && heroCopy((await get("/ar")).text).includes("اتصل بنا"));

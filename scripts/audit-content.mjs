@@ -132,7 +132,9 @@ try {
   const singles = rows.filter((r) => r.slug === "main");
   const m = await one(`SELECT count(*)::int AS n FROM media`);
   const i = await one(`SELECT count(*)::int AS n, count(*) FILTER (WHERE status = 'new')::int AS fresh FROM inquiries`);
-  const r2 = await one(`SELECT count(*)::int AS n FROM page_redirects`).catch(() => ({ n: "n/a (table not created yet)" }));
+  // Check the table exists first: a failed query would abort the whole transaction and break everything after it.
+  const hasRedirects = (await one(`SELECT to_regclass('public.page_redirects') IS NOT NULL AS ok`)).ok;
+  const r2 = hasRedirects ? await one(`SELECT count(*)::int AS n FROM page_redirects`) : { n: "n/a (this database has not created the table yet)" };
   console.log(`Edited page documents: ${singles.map((r) => `${r.kind} (${r.status})`).join(", ") || "none"}`);
   console.log(`Media files: ${m.n}   Inquiries: ${i.n} (${i.fresh} new)   Page redirects: ${r2.n}`);
   const users = (await client.query(`SELECT email, role, disabled FROM users ORDER BY created_at`)).rows;

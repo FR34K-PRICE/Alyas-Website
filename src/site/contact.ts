@@ -49,7 +49,11 @@ export function contactDetails(site: any) {
     whatsappHref: whatsappHref(c.whatsapp),
     email: normalizeEmail(c.email),
     emailHref: mailHref(c.email),
-    /** E.164-style value for schema.org, e.g. +9647701234567 (only when a phone is usable). */
-    telephone: normalizePhone(c.phone),
+    /**
+     * For schema.org: only a number already written in international form (+… or 00…), e.g. +9647701234567.
+     * A local number ("0770 …") is fine for a tel: link but ambiguous for structured data, and guessing a country
+     * code would be inventing a detail, so it is left out.
+     */
+    telephone: normalizePhone(c.phone).startsWith("+") ? normalizePhone(c.phone) : "",
   };
 }
