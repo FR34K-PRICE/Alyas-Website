@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { HttpError } from "@/lib/security";
-import { DEFAULTS, DEFAULT_SERVICES } from "./defaults";
+import { DEFAULTS, DEFAULT_SERVICES, LEGACY_DEFAULTS } from "./defaults";
 import { assertPublishable, assertSlugFree, recordAddressChange, resolveSlug } from "./pages";
 import { KINDS, SINGLETON_KEYS, deepMerge, emptyData, schemaFor, slugify, type KindKey } from "./schema";
 
@@ -20,6 +20,21 @@ export interface Entry {
 }
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/** Drops stored text that is identical to an earlier shipped default, so the current default shows instead. */
+function upgradeLegacy(kind: KindKey, data: any): any {
+  const rules = LEGACY_DEFAULTS.filter((r) => r.kind === kind);
+  if (!rules.length || !data || typeof data !== "object") return data;
+  const out = JSON.parse(JSON.stringify(data));
+  for (const r of rules) {
+    let parent = out;
+    for (const k of r.path.slice(0, -1)) parent = parent?.[k];
+    const last = r.path[r.path.length - 1];
+    const v = parent?.[last];
+    if (v && r.old.some((o) => o.en === v.en && o.ar === v.ar)) delete parent[last];
+  }
+  return out;
+}
 
 export function toEntry(r: any): Entry {
   const published = r.published ?? null;
@@ -83,7 +98,7 @@ export async function getSingleton(kind: KindKey): Promise<Entry> {
   const r = await db.query(`SELECT * FROM content WHERE kind = $1 AND slug = 'main'`, [kind]);
   if (r.rows[0]) {
     const e = toEntry(r.rows[0]);
-    e.data = deepMerge(deepMerge(emptyData(kind), DEFAULTS[kind] ?? {}), e.data);
+    e.data = deepMerge(deepMerge(emptyData(kind), DEFAULTS[kind] ?? {}), upgradeLegacy(kind, e.data));
     return e;
   }
   return {
@@ -249,7 +264,7 @@ export async function getSiteBundle(preview = false): Promise<SiteBundle> {
   for (const k of SINGLETON_KEYS) {
     const row = rows.find((r) => r.kind === k && r.slug === "main");
     const stored = row ? pickData(row) : null;
-    singles[k] = deepMerge(deepMerge(emptyData(k), DEFAULTS[k] ?? {}), stored ?? {});
+    singles[k] = deepMerge(deepMerge(emptyData(k), DEFAULTS[k] ?? {}), upgradeLegacy(k, stored) ?? {});
   }
   const coll = (kind: KindKey): any[] =>
     rows

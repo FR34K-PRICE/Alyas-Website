@@ -7,6 +7,7 @@ import { Photo, mediaUrl, type MediaMap } from "@/components/site/Img";
 import { ContactForm } from "@/components/site/ContactForm";
 import { OFFER_FALLBACKS, PHOTOS, PHOTO_FOR_ICON, dims, photoSrc, srcSet, type PhotoKey } from "./photos";
 import { absolute } from "./data";
+import { quickAction, validPhone, validWhatsapp } from "./contact";
 
 export interface Ctx {
   lang: Lang;
@@ -65,10 +66,49 @@ export function CtaCard({ ctx, title, body, label, href, image }: { ctx: Ctx; ti
   );
 }
 
+/**
+ * Event management and floral arrangements: real ALYAS Group services, shown as a quiet secondary row so they
+ * support, rather than compete with, the travel agency's message. Copy comes from the CMS (Events page and Home →
+ * Floral strip), never invented here.
+ */
+function AlsoFrom({ ctx }: { ctx: Ctx }) {
+  const { lang, base, b, media } = ctx;
+  const t = DICT[lang];
+  const mgmt = b.events.management;
+  const floral = b.home.floral;
+  const first = (s: string) => paras(s)[0] ?? "";
+  const cards = [
+    { key: "events", title: pick(mgmt.title, lang), body: first(pick(mgmt.body, lang)), href: `${base}/events`, image: b.events.image, fb: "city" as PhotoKey, pos: "42% 50%" },
+    { key: "floral", title: pick(floral.title, lang), body: first(pick(floral.body, lang)), href: `${base}/events#floral`, image: floral.image, fb: "flowers" as PhotoKey, pos: CROP.flowers },
+  ].filter((c) => c.title);
+  if (!cards.length) return null;
+  return (
+    <section className="also" aria-labelledby="also-title">
+      <div className="wrap">
+        <p className="label" id="also-title">{t.home.alsoFrom}</p>
+        <ul className="also-grid">
+          {cards.map((c) => (
+            <li key={c.key} className="also-card">
+              <Photo id={c.image} media={media} lang={lang} fallback={c.fb} ratio="1 / 1" pos={c.pos} sizes="120px" className="also-photo" decorative />
+              <div className="also-copy">
+                <h3>{c.title}</h3>
+                {c.body && <p>{c.body}</p>}
+                <a className="link-arrow" href={c.href}>
+                  {t.cta.learnMore} <ArrowIcon />
+                </a>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 function FloralBand({ title, body, image, ctx }: { title: string; body: string; image?: string; ctx: Ctx }) {
   const t = DICT[ctx.lang];
   return (
-    <section className="floral">
+    <section className="floral" id="floral">
       <div className="wrap floral-inner">
         <Photo id={image} media={ctx.media} lang={ctx.lang} fallback="flowers" ratio="4 / 5" pos={CROP.flowers} sizes="(min-width: 900px) 22vw, 60vw" className="floral-photo" />
         <div className="floral-copy">
@@ -105,6 +145,11 @@ function heroProps(ctx: Ctx, sub: string): HeroProps {
     sub,
     ctaLabel: pick(h.primaryCta, lang),
     ctaHref: `${base}/contact`,
+    secondary: (() => {
+      const q = quickAction(b.site, lang, true);
+      return q ? { href: q.href, label: q.label, external: q.kind === "whatsapp" } : undefined;
+    })(),
+    actionsLabel: DICT[lang].cta.contactActions,
     photo,
     photoAlt: custom ? (lang === "ar" ? info?.alt_ar || info?.alt_en : info?.alt_en || info?.alt_ar) || "" : pick(PHOTOS.hero.alt, lang),
     foreground,
@@ -164,7 +209,7 @@ export function HomePage(ctx: Ctx) {
     description: pick(site.seo.description, lang),
     address: { "@type": "PostalAddress", addressLocality: "Baghdad", addressCountry: "IQ" },
     ...(socials.length ? { sameAs: socials } : {}),
-    ...(site.contact.phone ? { telephone: site.contact.phone } : {}),
+    ...(validPhone(site.contact.phone) ? { telephone: site.contact.phone } : {}),
     ...(site.contact.email ? { email: site.contact.email } : {}),
     ...(site.brand.logo ? { logo: absolute(mediaUrl(site.brand.logo, 960)) } : {}),
   };
@@ -294,7 +339,7 @@ export function HomePage(ctx: Ctx) {
         </section>
       )}
 
-      <FloralBand title={pick(h.floral.title, lang)} body={pick(h.floral.body, lang)} image={h.floral.image} ctx={ctx} />
+      <AlsoFrom ctx={ctx} />
       <CtaCard ctx={ctx} title={pick(h.cta.title, lang)} body={pick(h.cta.body, lang)} label={pick(h.cta.button, lang)} href={`${base}/contact`} image={h.cta.image} />
     </>
   );
@@ -528,7 +573,7 @@ export function ContactPage(ctx: Ctx) {
   const socials = (["facebook", "instagram", "linkedin", "youtube", "tiktok"] as const).filter((k) => b.site.social[k]);
   const address = pick(s.address, lang);
   const hours = pick(s.hours, lang);
-  const wa = (s.whatsapp || "").replace(/\D/g, "");
+  const wa = validWhatsapp(s.whatsapp);
   const embed: string = /^https:\/\//.test(s.mapEmbed || "") ? s.mapEmbed : "";
 
   // Resolve "service:flights" / "offer:slug" / "event:slug" into a readable title.
@@ -553,7 +598,7 @@ export function ContactPage(ctx: Ctx) {
           <aside className="contact-info" aria-label={t.footer.reach}>
             <Photo id={c.image} media={media} lang={lang} fallback="hero" ratio="4 / 3" pos="34% 50%" sizes="(min-width: 900px) 36vw, 100vw" className="contact-photo" />
             <ul className="contact-list">
-              {s.phone && (
+              {validPhone(s.phone) && (
                 <li>
                   <a href={`tel:${s.phone.replace(/[^\d+]/g, "")}`} dir="ltr">{s.phone}</a>
                 </li>

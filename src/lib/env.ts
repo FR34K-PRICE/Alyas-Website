@@ -13,6 +13,9 @@ export function sessionSecret(): string {
 export function siteUrl(): string {
   const raw = process.env.SITE_URL?.replace(/\/+$/, "");
   if (raw) return raw;
+  // On a Replit deployment, use the deployment's own domain; only in the workspace fall back to the dev domain.
+  const deployed = process.env.REPLIT_DEPLOYMENT ? process.env.REPLIT_DOMAINS?.split(",")[0]?.trim() : "";
+  if (deployed) return `https://${deployed}`;
   if (process.env.REPLIT_DEV_DOMAIN) return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   return "http://localhost:3000";
 }

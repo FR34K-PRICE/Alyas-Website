@@ -2,6 +2,8 @@ import { DICT } from "@/i18n/dict";
 import { pick, type Lang } from "@/content/schema";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { ContactDock } from "@/components/site/ContactDock";
+import { quickAction } from "./contact";
 import { mediaUrl, type MediaMap } from "@/components/site/Img";
 import type { SiteBundle } from "@/content/store";
 
@@ -19,7 +21,7 @@ export function SiteStyle({ site }: { site: any }) {
   return <style dangerouslySetInnerHTML={{ __html: `:root{${rules.join(";")}}` }} />;
 }
 
-export function Frame({ lang, base, bundle, media, tone, preview, children }: { lang: Lang; base: string; bundle: SiteBundle; media: MediaMap; tone: "hero" | "solid"; preview?: boolean; children: React.ReactNode }) {
+export function Frame({ lang, base, bundle, media, tone, preview, dock = "always", children }: { lang: Lang; base: string; bundle: SiteBundle; media: MediaMap; tone: "hero" | "solid"; preview?: boolean; dock?: "always" | "after-hero" | "none"; children: React.ReactNode }) {
   const t = DICT[lang];
   const site = bundle.site;
   void media;
@@ -50,6 +52,18 @@ export function Frame({ lang, base, bundle, media, tone, preview, children }: { 
         {children}
       </main>
       <Footer lang={lang} base={base} site={site} />
+      {dock !== "none" && (
+        <ContactDock
+          mode={dock}
+          label={t.cta.contactActions}
+          planHref={`${base}/contact`}
+          planLabel={t.cta.plan}
+          secondary={(() => {
+            const q = quickAction(site, lang, true);
+            return q ? { href: q.href, label: q.label, external: q.kind === "whatsapp" } : undefined;
+          })()}
+        />
+      )}
       {preview && (
         <div className="preview-bar" role="status">
           <span>{t.preview.banner}</span>

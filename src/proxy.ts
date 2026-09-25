@@ -50,8 +50,15 @@ export function proxy(req: NextRequest) {
   const lang = preferred(req);
   const url = req.nextUrl.clone();
   if (seg.length === 0) {
+    // Serve the visitor's language at "/" directly (status 200) rather than redirecting, so a deployment health
+    // check on "/" succeeds. The page's canonical link points at /ar or /en.
+    const h = new Headers(req.headers);
+    h.set("x-alyas-lang", lang);
     url.pathname = `/${lang}`;
-    return NextResponse.redirect(url, 307);
+    const res = NextResponse.rewrite(url, { request: { headers: h } });
+    res.headers.set("Vary", "Accept-Language, Cookie");
+    res.headers.set("Cache-Control", "private, no-cache");
+    return res;
   }
   const alias = ALIASES[head] ?? head;
   if (PAGES.has(alias)) {

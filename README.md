@@ -52,13 +52,16 @@ Generate a secret: `node -e "console.log(require('crypto').randomBytes(48).toStr
 
 1. Import the project into a Repl. `.replit` is already configured.
 2. Open the **Database** tool, create a PostgreSQL database (this sets `DATABASE_URL`), or paste an external Postgres URL into Secrets.
-3. Add Secrets: `SESSION_SECRET`, `SITE_URL` (`DATABASE_URL` if not already set).
+3. Add Secrets: `SESSION_SECRET`, `SITE_URL` (`DATABASE_URL` if not already set). **The deployment reads its own secrets**: make sure all three are present for the *deployment* (Deployments → Secrets / Publishing settings), not only in the workspace. Without `DATABASE_URL` the server starts but every page returns a 500 error.
 4. Create the first admin in the **Shell**:
    ```bash
    npm run create-admin
    ```
 5. **Deploy → Autoscale** (build: `npm run build`, run: `npm run start`). Tables are created automatically on first start.
-6. Review the deployment URL. Point the domain at it only when you are happy.
+6. Open `https://YOUR-DEPLOYMENT/api/health`. **200 `{"ok":true}`** means the server, database and secrets are in place; a **503** names what is missing (`DATABASE_URL`, `SESSION_SECRET`, or an unreachable database). Then review the site. Point the domain at it only when you are happy.
+7. Before launch, run `npm run audit:content` in the Shell. It is read-only and lists offers, events, news, custom pages and accounts, flagging anything that looks like sample or test content, so you can remove it from the admin panel.
+
+`/` answers with the visitor's language directly (status 200), so a health check on `/` succeeds. If `SITE_URL` is not set, canonical links and the sitemap use the deployment's own domain (`REPLIT_DOMAINS`) when running as a Replit deployment; set `SITE_URL` to the final public address (for example your custom domain) so they always match it.
 
 The filesystem on Replit deployments is temporary, so nothing is written to disk in production: images are processed with `sharp` and stored in Postgres (`media_files`), served with long-lived cache headers.
 
@@ -100,11 +103,21 @@ npm run typecheck
 npm run build
 BASE_URL=http://localhost:3000 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='...' npm run check:security
 BASE_URL=http://localhost:3000 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='...' npm run check:pages
+BASE_URL=http://localhost:3000 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='...' npm run check:home
 ```
 
 `check:security` signs in, creates a throw-away editor to test role limits, then disables it. It does not change published content.
 
+`check:home` checks the public homepage: the hero copy in both languages, that contact actions come only from the details saved in the CMS, the secondary "Also from ALYAS Group" row, SEO metadata and structured data in both languages, and the health endpoint. It is read-only unless you set `HOME_CHECK_MUTATE=1`, which temporarily saves test contact details in Site & brand and restores your originals (use a local or test database only).
+
 `check:pages` exercises the page builder end to end (address rules, unsafe links, drafts, preview, publish/unpublish, address changes, menu limit, sitemap, `hreflang`, roles, and that the built-in pages still open). It creates throw-away pages, one offer and one event, and deletes them afterwards. Both scripts leave a disabled throw-away editor account behind.
+
+## Homepage
+
+- **Message.** The hero states what ALYAS Travel does: flights, hotels, visa assistance, transportation and tailored trips from Baghdad. Edit it under **Home page → Hero → Supporting text**. Earlier built-in wording that was never edited is upgraded automatically to the current wording; text an editor has changed is never touched.
+- **Contact actions.** The main action is "Plan Your Trip" (the inquiry form), in the hero and header. A second action, **WhatsApp or Call**, appears only if a valid number is saved under **Site & brand → Contact details** (WhatsApp is preferred; a number needs 7–15 digits). Nothing is defaulted or invented: with no details saved, only the inquiry action shows. On phones a slim contact bar stays at the bottom (on the homepage it appears once the hero has scrolled away; it is hidden on the contact page).
+- **Secondary services.** Event management and floral arrangements are shown as a quiet "Also from ALYAS Group" row after the travel content, not in the hero. Their text comes from **Events & conferences page** (management) and **Home page → Floral strip**.
+- **Empty sections stay hidden.** No offers, upcoming-event or news content appears until real items are published. `npm run audit:content` lists what a database contains.
 
 ## Page builder (custom pages)
 
@@ -117,7 +130,7 @@ BASE_URL=http://localhost:3000 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='...' 
 - **Menu.** Tick "Show this page in the site menu" (optional short label). Up to four custom pages fit in the menu, in the order of the list under Custom pages (use ↑ ↓ there). They sit between Events and Contact.
 - **Search.** Published pages are added to `sitemap.xml` in both languages with `hreflang` alternates; canonical links, titles, descriptions and Open Graph tags come from the SEO fields with fallbacks to the page title and the site defaults.
 - **Links inside sections** accept a site path (`/contact`, prefixed with the visitor's language automatically), `https://` links, `#anchors`, `mailto:` and `tel:`. Anything else (`javascript:`, `data:`, `//host`) is rejected on save and again when rendering.
-- **Technical notes.** Pages are rows of kind `page` in the existing `content` table (no schema change, so existing content is untouched); section lists are validated as a typed union built from `src/content/schema.ts`; rendering is in `src/site/sections.tsx`; slug rules are in `src/content/pages.ts`.
+- **Technical notes.** Pages are rows of kind `page` in the existing `content` table, so existing tables and rows are not altered. The address-change redirects add **one new table, `page_redirects`** (`from_slug text PRIMARY KEY`, `page_id uuid NOT NULL REFERENCES content(id) ON DELETE CASCADE`, `created_at timestamptz`, plus an index on `page_id`). It is created automatically at startup with `CREATE TABLE IF NOT EXISTS`, so an existing database gets it on its next start without any manual step or change to its data. Deleting a page removes its redirects through the foreign key; section lists are validated as a typed union built from `src/content/schema.ts`; rendering is in `src/site/sections.tsx`; slug rules are in `src/content/pages.ts`.
 - **Limits.** Old addresses are kept as redirects for as long as the page exists (they cannot be removed one by one). Each page is one document shown in both languages (a language left empty falls back to the other), there is no per-language publishing, and the menu holds four custom pages.
 
 ## Hero and photography

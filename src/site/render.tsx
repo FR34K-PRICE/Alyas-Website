@@ -104,7 +104,7 @@ export async function SitePage({ lang, slug, preview, search }: { lang: Lang; sl
     body = <CustomPage ctx={ctx} page={page} />;
   }
   return (
-    <Frame lang={lang} base={base} bundle={bundle} media={media} tone={slug === "" ? "hero" : "solid"} preview={preview}>
+    <Frame lang={lang} base={base} bundle={bundle} media={media} tone={slug === "" ? "hero" : "solid"} preview={preview} dock={slug === "" ? "after-hero" : slug === "contact" ? "none" : "always"}>
       {body}
     </Frame>
   );

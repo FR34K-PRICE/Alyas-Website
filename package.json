@@ -13,6 +13,8 @@
     "create-admin": "tsx scripts/create-admin.ts",
     "check:security": "node scripts/security-check.mjs",
     "check:pages": "node scripts/pages-check.mjs",
+    "check:home": "node scripts/home-check.mjs",
+    "audit:content": "node scripts/audit-content.mjs",
     "typecheck": "tsc --noEmit",
     "prepare-photos": "node scripts/prepare-photos.mjs"
   },

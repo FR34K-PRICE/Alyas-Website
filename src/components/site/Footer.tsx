@@ -1,6 +1,7 @@
 import { DICT } from "@/i18n/dict";
 import { pick, type Lang } from "@/content/schema";
 import { SocialIcon } from "./Icons";
+import { validPhone, validWhatsapp } from "@/site/contact";
 
 const SOCIAL = [
   ["facebook", "Facebook"],
@@ -13,8 +14,8 @@ const SOCIAL = [
 export function Footer({ lang, base, site }: { lang: Lang; base: string; site: any }) {
   const t = DICT[lang];
   const c = site.contact;
-  const phone: string = c.phone;
-  const wa: string = (c.whatsapp || "").replace(/\D/g, "");
+  const phone: string = validPhone(c.phone) ? c.phone : "";
+  const wa: string = validWhatsapp(c.whatsapp);
   const address = pick(c.address, lang);
   const hours = pick(c.hours, lang);
   const socials = SOCIAL.filter(([k]) => site.social[k]);

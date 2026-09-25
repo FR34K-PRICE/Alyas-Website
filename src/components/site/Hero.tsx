@@ -29,9 +29,12 @@ export interface HeroProps {
   photoAlt: string;
   foreground?: HeroImage;
   aircraft: { src: string; width: number; height: number };
+  /** WhatsApp or phone, only when configured in the CMS. */
+  secondary?: { href: string; label: string; external: boolean };
+  actionsLabel?: string;
 }
 
-export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, foreground, aircraft }: HeroProps) {
+export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, foreground, aircraft, secondary, actionsLabel }: HeroProps) {
   const root = useRef<HTMLElement>(null);
   const plane = useRef<HTMLDivElement>(null);
 
@@ -97,9 +100,16 @@ export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, foregr
         )}
         <div className="hero-copy">
           <p>{sub}</p>
-          <a className="btn btn--gold" href={ctaHref}>
-            {ctaLabel}
-          </a>
+          <div className="hero-actions" role="group" aria-label={actionsLabel}>
+            <a className="btn btn--gold" href={ctaHref}>
+              {ctaLabel}
+            </a>
+            {secondary && (
+              <a className="btn btn--light" href={secondary.href} {...(secondary.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
+                {secondary.label}
+              </a>
+            )}
+          </div>
         </div>
       </div>
     </section>

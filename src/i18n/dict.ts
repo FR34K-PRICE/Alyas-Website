@@ -9,7 +9,7 @@ export const dirOf = (l: Lang) => (l === "ar" ? "rtl" : "ltr");
 type Dict = {
   nav: { home: string; about: string; travel: string; events: string; contact: string; menu: string; close: string; skip: string; primary: string };
   lang: { switchTo: string; short: string; name: string };
-  cta: { aboutMore: string; allEvents: string; plan: string; details: string; askAbout: string; contactUs: string; openMaps: string; whatsapp: string; register: string; readMore: string; viewAll: string };
+  cta: { aboutMore: string; allEvents: string; plan: string; details: string; askAbout: string; contactUs: string; openMaps: string; whatsapp: string; register: string; readMore: string; viewAll: string; whatsappShort: string; call: string; learnMore: string; contactActions: string };
   home: { alsoFrom: string; validUntil: string; heroLabel: string };
   sections: { about: string; services: string; offers: string; events: string; floral: string; how: string };
   events: { hostedBy: string; when: string; where: string; noUpcoming: string };
@@ -29,7 +29,7 @@ export const DICT: Record<Lang, Dict> = {
   en: {
     nav: { home: "Home", about: "About", travel: "Travel services", events: "Events & conferences", contact: "Contact", menu: "Menu", close: "Close menu", skip: "Skip to content", primary: "Main navigation" },
     lang: { switchTo: "Switch to Arabic", short: "العربية", name: "English" },
-    cta: { aboutMore: "More about ALYAS", allEvents: "All events and news", plan: "Plan Your Trip", details: "Request Details", askAbout: "Ask about this", contactUs: "Contact us", openMaps: "Open in maps", whatsapp: "Message on WhatsApp", register: "Registration and info", readMore: "Read more", viewAll: "See all travel services" },
+    cta: { aboutMore: "More about ALYAS", allEvents: "All events and news", plan: "Plan Your Trip", details: "Request Details", askAbout: "Ask about this", contactUs: "Contact us", openMaps: "Open in maps", whatsapp: "Message on WhatsApp", register: "Registration and info", readMore: "Read more", viewAll: "See all travel services", whatsappShort: "WhatsApp", call: "Call us", learnMore: "Learn more", contactActions: "Contact ALYAS Travel" },
     home: { alsoFrom: "Also from ALYAS Group", validUntil: "Valid until", heroLabel: "ALYAS Travel" },
     sections: { about: "About ALYAS", services: "Travel services", offers: "Offers", events: "Events & conferences", floral: "From ALYAS Group", how: "How we work" },
     events: { hostedBy: "ALYAS Group", when: "When", where: "Where", noUpcoming: "" },
@@ -51,7 +51,7 @@ export const DICT: Record<Lang, Dict> = {
   ar: {
     nav: { home: "الرئيسية", about: "من نحن", travel: "خدمات السفر", events: "الفعاليات والمؤتمرات", contact: "تواصل معنا", menu: "القائمة", close: "إغلاق القائمة", skip: "انتقل إلى المحتوى", primary: "التنقل الرئيسي" },
     lang: { switchTo: "التبديل إلى الإنجليزية", short: "English", name: "العربية" },
-    cta: { aboutMore: "المزيد عنّا", allEvents: "كل الفعاليات والأخبار", plan: "خطّط لرحلتك", details: "اطلب التفاصيل", askAbout: "اسأل عن هذا", contactUs: "تواصل معنا", openMaps: "افتح في الخرائط", whatsapp: "راسلنا على واتساب", register: "التسجيل والمعلومات", readMore: "اقرأ المزيد", viewAll: "كل خدمات السفر" },
+    cta: { aboutMore: "المزيد عنّا", allEvents: "كل الفعاليات والأخبار", plan: "خطّط لرحلتك", details: "اطلب التفاصيل", askAbout: "اسأل عن هذا", contactUs: "تواصل معنا", openMaps: "افتح في الخرائط", whatsapp: "راسلنا على واتساب", register: "التسجيل والمعلومات", readMore: "اقرأ المزيد", viewAll: "كل خدمات السفر", whatsappShort: "واتساب", call: "اتصل بنا", learnMore: "اعرف المزيد", contactActions: "تواصل مع الياس للسفر" },
     home: { alsoFrom: "ومن مجموعة الياس أيضاً", validUntil: "ساري حتى", heroLabel: "الياس للسفر" },
     sections: { about: "عن الياس", services: "خدمات السفر", offers: "العروض", events: "الفعاليات والمؤتمرات", floral: "من مجموعة الياس", how: "كيف نعمل" },
     events: { hostedBy: "مجموعة الياس", when: "الموعد", where: "المكان", noUpcoming: "" },

@@ -376,7 +376,7 @@ html[dir="rtl"] .hero-plane img {
 }
 html[lang="ar"] .hero-title {
   font-weight: 700;
-  font-size: clamp(4.4rem, 14.6vw, 19rem);
+  font-size: clamp(4.4rem, 14.6vw, 15.5rem);
   line-height: 1.1;
   inset-block-end: 15.5%;
   letter-spacing: 0;
@@ -390,7 +390,7 @@ html[lang="ar"] .hero-title[data-long="true"] {
   z-index: 5;
   inset-block-end: var(--hero-pad);
   left: var(--hero-pad);
-  max-width: 21.5rem;
+  max-width: clamp(14rem, 27vw, 24rem);
   color: #fff;
 }
 .hero-copy {
@@ -412,7 +412,7 @@ html[lang="ar"] .hero-title[data-long="true"] {
   text-shadow: 0 1px 18px rgba(3, 26, 44, 0.55);
 }
 html[lang="ar"] .hero-copy {
-  max-width: 22rem;
+  max-width: clamp(14rem, 27vw, 24rem);
 }
 html[lang="ar"] .hero-copy p {
   line-height: 1.75;
@@ -439,17 +439,17 @@ html[lang="ar"] .hero-copy p {
     left: 24%;
   }
   .hero-title {
-    inset-block-end: 26%;
+    inset-block-end: 31%;
     text-align: center;
     font-size: clamp(3.6rem, 22vw, 12rem);
   }
   html[lang="ar"] .hero-title {
     font-size: clamp(3.6rem, 17.5vw, 12rem);
-    inset-block-end: 24%;
+    inset-block-end: 31%;
   }
   .hero-title[data-long="true"] {
     font-size: clamp(2.4rem, 12vw, 6rem);
-    inset-block-end: 34%;
+    inset-block-end: 39%;
   }
   .hero-copy {
     inset-inline: var(--hero-pad);
@@ -1431,5 +1431,166 @@ html[lang="ar"] .pg-text-col p {
 @media (min-width: 900px) {
   .pg-gallery[data-count="1"] {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------------- Contact actions */
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.hero-actions .btn {
+  min-height: 48px;
+  padding-inline: 22px;
+}
+.dock {
+  display: none;
+}
+@media (max-width: 767px) {
+  .dock {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    gap: 10px;
+    padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255, 255, 255, 0.97);
+    border-block-start: 1px solid var(--line);
+    box-shadow: 0 -6px 24px rgba(11, 37, 69, 0.12);
+  }
+  .dock[hidden] {
+    display: none;
+  }
+  .dock .btn {
+    flex: 1 1 0;
+    min-height: 48px;
+    padding-inline: 14px;
+  }
+  .dock .btn:first-child {
+    flex-grow: 1.7;
+  }
+  /* keep the end of the page clear of the bar */
+  body:has(.dock:not([hidden])) .site-footer {
+    padding-block-end: 84px;
+  }
+  body:has(.dock:not([hidden])) .preview-bar {
+    inset-block-end: 68px;
+  }
+}
+
+/* ---------------------------------------------------------------- Also from ALYAS Group (secondary services) */
+.also {
+  padding-block: clamp(36px, 5vw, 72px);
+  border-block-start: 1px solid var(--line);
+  margin-block-start: clamp(24px, 4vw, 48px);
+}
+.also .label {
+  margin-block-end: 20px;
+}
+.also-grid {
+  display: grid;
+  gap: 16px;
+}
+@media (min-width: 800px) {
+  .also-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.also-card {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #fff;
+}
+.also-photo {
+  border-radius: 16px;
+}
+.also-copy h3 {
+  margin-block-end: 6px;
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+.also-copy p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+html[lang="ar"] .also-copy p {
+  line-height: 1.8;
+}
+
+/* Hero headline vs copy: the Arabic word is wide, so it is set a little smaller between tablet and small laptop
+   widths, and small phones get more room between the headline and the copy. */
+@media (min-width: 900px) and (max-width: 1279px) {
+  html[lang="ar"] .hero-title {
+    font-size: 12vw;
+  }
+}
+@media (max-width: 380px) {
+  .hero-title {
+    inset-block-end: 37%;
+  }
+  html[lang="ar"] .hero-title {
+    inset-block-end: 37%;
+  }
+  .hero-title[data-long="true"] {
+    inset-block-end: 45%;
+  }
+  .hero-copy p {
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
+}
+@media (min-width: 1280px) and (max-width: 1599px) {
+  html[lang="ar"] .hero-title {
+    font-size: 13vw;
+  }
+}
+@media (max-width: 380px) {
+  .hero-actions .btn {
+    min-height: 46px;
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 340px) {
+  .hero-actions {
+    gap: 8px;
+  }
+  .hero-actions .btn {
+    padding-inline: 12px;
+    font-size: 0.92rem;
+  }
+  .header-row,
+  .header-actions {
+    gap: 6px;
+  }
+  .lang-switch {
+    padding-inline: 12px;
+  }
+}
+
+/* On phones and tablets the copy spans the frame (this must out-rank the Arabic-specific width above). */
+@media (max-width: 899px) {
+  .hero-copy,
+  html[lang="ar"] .hero-copy {
+    max-width: none;
+  }
+}
+
+/* Phones: a wider, slightly denser soft scrim so the copy stays readable where it crosses bright rock highlights. */
+@media (max-width: 899px) {
+  .hero-copy::before {
+    inset: -40px -14px -30px -14px;
+    background: radial-gradient(ellipse at 50% 56%, rgba(3, 26, 44, 0.86) 0%, rgba(3, 26, 44, 0.72) 55%, rgba(3, 26, 44, 0) 92%);
   }
 }

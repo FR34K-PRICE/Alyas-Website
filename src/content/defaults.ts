@@ -16,7 +16,7 @@ export const DEFAULTS: Partial<Record<KindKey, any>> = {
       siteName: bi("ALYAS Travel", "الياس للسفر"),
       brandMain: bi("ALYAS", "الياس"),
       brandSub: bi("Travel", "للسفر"),
-      tagline: bi("Travel, events and flowers from Baghdad", "سفر وفعاليات وزهور من بغداد"),
+      tagline: bi("Flights, hotels, visas and tailored trips from Baghdad", "طيران وفنادق وتأشيرات ورحلات مصمَّمة من بغداد"),
     },
     colors: { primary: "", accent: "", paper: "" },
     contact: { address: bi("Baghdad, Iraq", "بغداد، العراق") },
@@ -37,8 +37,8 @@ export const DEFAULTS: Partial<Record<KindKey, any>> = {
     hero: {
       headline: bi("Explore", "استكشف"),
       sub: bi(
-        "Flights, hotels, visa assistance and transport, arranged by our team in Baghdad.",
-        "تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل، ينظّمها فريقنا في بغداد.",
+        "ALYAS Travel arranges flights, hotels, visa assistance, transportation and tailored trips from Baghdad.",
+        "الياس للسفر من بغداد: نرتّب لك تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل والرحلات المصمَّمة لك.",
       ),
       primaryCta: bi("Plan Your Trip", "خطّط لرحلتك"),
     },
@@ -152,5 +152,27 @@ export const DEFAULT_SERVICES: { slug: string; sort: number; data: any }[] = [
   {
     slug: "tailored-trips", sort: 50,
     data: { icon: "tailored", title: bi("Tailored trips", "رحلات مصمَّمة لك"), summary: bi("A trip planned around you, with flights, stay and transport pulled into one plan.", "رحلة تُخطَّط حولك، تجمع الطيران والإقامة والنقل في خطة واحدة.") },
+  },
+];
+
+/**
+ * Earlier shipped defaults. A stored value that is exactly one of these was never customised (saving a form
+ * stores the defaults it was showing), so it is upgraded to the current default. Edited text is never touched.
+ */
+export const LEGACY_DEFAULTS: { kind: KindKey; path: string[]; old: { ar: string; en: string }[] }[] = [
+  {
+    kind: "home",
+    path: ["hero", "sub"],
+    old: [
+      {
+        en: "Flights, hotels, visa assistance and transport, arranged by our team in Baghdad.",
+        ar: "تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل، ينظّمها فريقنا في بغداد.",
+      },
+    ],
+  },
+  {
+    kind: "site",
+    path: ["brand", "tagline"],
+    old: [{ en: "Travel, events and flowers from Baghdad", ar: "سفر وفعاليات وزهور من بغداد" }],
   },
 ];
