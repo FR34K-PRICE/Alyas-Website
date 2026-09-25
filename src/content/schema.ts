@@ -4,12 +4,13 @@
  * so the two can never drift apart. This file must stay free of server-only imports.
  */
 import { z } from "zod";
+import { CONTACT_MESSAGES, normalizeEmail, normalizePhone, normalizeWhatsapp } from "./contact-rules";
 
 export type Lang = "ar" | "en";
 export type Bi = { ar: string; en: string };
 
 export type Field =
-  | { key: string; type: "text" | "textarea" | "url" | "link" | "color" | "date" | "boolean" | "number"; label: string; bilingual?: boolean; max?: number; help?: string; rows?: number }
+  | { key: string; type: "text" | "textarea" | "url" | "link" | "phone" | "whatsapp" | "email" | "color" | "date" | "boolean" | "number"; label: string; bilingual?: boolean; max?: number; help?: string; rows?: number }
   | { key: string; type: "image"; label: string; help?: string }
   | { key: string; type: "select"; label: string; options: { value: string; label: string }[]; help?: string }
   | { key: string; type: "group"; label: string; fields: Field[]; help?: string }
@@ -114,9 +115,9 @@ export const KINDS: Record<KindKey, KindDef> = {
         { key: "paper", type: "color", label: "Page background" },
       ], "Leave a color empty to use the default."),
       group("contact", "Contact details", [
-        t("phone", "Phone", { max: 40, help: "Shown only when filled in, with the country code (7 or more digits). Used for a “Call us” button in the hero and on the mobile contact bar when no WhatsApp number is set, and in the footer and contact page." }),
-        t("whatsapp", "WhatsApp number", { max: 40, help: "Digits with country code, e.g. 9647xxxxxxxxx (7 to 15 digits). Adds a WhatsApp button to the hero and the mobile contact bar, and a link in the footer and contact page. Leave empty to show no WhatsApp button." }),
-        t("email", "Email", { max: 120 }),
+        { key: "phone", type: "phone", label: "Phone", max: 40, help: "7 to 15 digits; a local number such as 0770 123 4567 works for calling. Used for a “Call us” button in the hero and on the mobile contact bar when no WhatsApp number is set, and in the footer and contact page. Leave empty to show no phone." },
+        { key: "whatsapp", type: "whatsapp", label: "WhatsApp number", max: 40, help: "International format, starting with the country code (no leading 0), e.g. 964 770 123 4567; 7 to 15 digits. Adds a WhatsApp button to the hero and the mobile contact bar, and a link in the footer and contact page. Leave empty to show no WhatsApp button." },
+        { key: "email", type: "email", label: "Email", max: 120, help: "One address. Shown in the footer and contact page only when filled in." },
         bt("address", "Address", { max: 200 }),
         bt("hours", "Opening hours", { max: 200 }),
         url("mapUrl", "Map link", "A Google Maps (or similar) link shown as “Open in maps”."),
@@ -296,6 +297,12 @@ function scalar(f: Field & { type: string }): z.ZodType {
         .trim()
         .max(500)
         .refine((v) => v === "" || /^https:\/\/[^\s]+$/i.test(v) || /^http:\/\/[^\s]+$/i.test(v), "Enter a full link starting with https://");
+    case "phone":
+      return z.string().trim().max(40).refine((v) => v === "" || normalizePhone(v) !== "", CONTACT_MESSAGES.phone);
+    case "whatsapp":
+      return z.string().trim().max(40).refine((v) => v === "" || normalizeWhatsapp(v) !== "", CONTACT_MESSAGES.whatsapp);
+    case "email":
+      return z.string().trim().max(120).refine((v) => v === "" || normalizeEmail(v) !== "", CONTACT_MESSAGES.email);
     case "link":
       return z.string().trim().max(300).refine(isSafeLink, "Use a page like /contact, a full https:// link, an anchor like #offers, or mailto:/tel:.");
     case "color":

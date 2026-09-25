@@ -1,14 +1,16 @@
 /**
- * Black-box checks for the public homepage against a running server.
+ * Black-box checks for the public site (homepage focus) against a running server.
  *
  *   BASE_URL=http://localhost:3000 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='...' npm run check:home
  *
- * Read-only by default: hero copy, secondary services, SEO in both languages, the health endpoint, and that no
- * WhatsApp/phone action appears unless contact details are configured in the CMS.
+ * Read-only by default: hero copy, secondary services, contact actions come only from configured details, SEO on
+ * every public page in both languages, `/`, aliases and canonical links, and the health endpoint.
  *
- * Set HOME_CHECK_MUTATE=1 to also prove WhatsApp/phone actions appear when configured. That temporarily saves and
- * publishes test contact details in Site & brand and then restores your original values. Use it on a local or test
- * database only, never on production.
+ * HOME_CHECK_MUTATE=1 also proves behaviour that needs test data: that untouched starter wording is upgraded while
+ * edited wording is preserved exactly, and that WhatsApp/phone/email are validated and normalised identically in the
+ * hero, mobile bar, footer, contact page and structured data. That mode temporarily saves and publishes test values
+ * in Home and Site & brand and restores your originals afterwards. Use a local or isolated test database ONLY,
+ * never production.
  */
 const BASE = (process.env.BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
@@ -49,24 +51,71 @@ async function login(email, password) {
 }
 const heroCopy = (html) => (html.match(/<div class="hero-copy">([\s\S]*?)<\/div>\s*<\/div>\s*<\/section>/) || [, ""])[1];
 const heroText = (html) => heroCopy(html).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+const heroSub = (html) => ((heroCopy(html).match(/<p>([\s\S]*?)<\/p>/) || [, ""])[1]).replace(/<[^>]+>/g, "").trim();
 const meta = (html, re) => (html.match(re) || [, ""])[1];
+const decode = (s) => s.replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 
 console.log(`Target: ${BASE}\n`);
+
+/* ---- 0. Pure rules (no server needed) ---- */
+try {
+  const r = await import("../src/content/contact-rules.ts");
+  const eq = (name, got, want) => ok(name, got === want, `got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+  eq("whatsapp: +964 770 123 4567 → digits", r.normalizeWhatsapp("+964 770 123 4567"), "9647701234567");
+  eq("whatsapp: 00964 770 123 4567 → drops 00", r.normalizeWhatsapp("00964 770 123 4567"), "9647701234567");
+  eq("whatsapp: (964) 770-123-4567", r.normalizeWhatsapp("(964) 770-123-4567"), "9647701234567");
+  eq("whatsapp: local 0770 123 4567 rejected (no country code)", r.normalizeWhatsapp("0770 123 4567"), "");
+  eq("whatsapp: too short rejected", r.normalizeWhatsapp("123456"), "");
+  eq("whatsapp: too long rejected", r.normalizeWhatsapp("9647701234567890"), "");
+  eq("whatsapp: letters rejected", r.normalizeWhatsapp("964 770 CALL ME"), "");
+  eq("whatsapp: misplaced + rejected", r.normalizeWhatsapp("964+7701234567"), "");
+  eq("whatsapp: double + rejected", r.normalizeWhatsapp("++9647701234567"), "");
+  eq("phone: +964-770-123-4567", r.normalizePhone("+964-770-123-4567"), "+9647701234567");
+  eq("phone: 00964… becomes +964…", r.normalizePhone("00964 770 000 0000"), "+9647700000000");
+  eq("phone: local number keeps its 0", r.normalizePhone("(0770) 123-4567"), "07701234567");
+  eq("phone: too short rejected", r.normalizePhone("12345"), "");
+  eq("phone: text rejected", r.normalizePhone("n/a"), "");
+  eq("phone: tel: injection rejected", r.normalizePhone("123456789;ext=1"), "");
+  eq("email: plain address kept", r.normalizeEmail("info@alyas.example"), "info@alyas.example");
+  eq("email: query string rejected", r.normalizeEmail("a@b.co?subject=hi"), "");
+  eq("email: two addresses rejected", r.normalizeEmail("a@b.co, c@d.co"), "");
+  eq("email: display name rejected", r.normalizeEmail("Name <a@b.co>"), "");
+  eq("email: no domain rejected", r.normalizeEmail("a@b"), "");
+} catch (e) {
+  console.log(`SKIP  contact-rule unit checks (this Node cannot import TypeScript directly: ${e.code || e.message})`);
+}
+
 const A = await login(ADMIN_EMAIL, ADMIN_PASSWORD);
 ok("administrator signs in", !!A);
 if (!A) process.exit(1);
 
-// 1. Health and the root address
+/* ---- 1. Health and the root address ---- */
 const health = await get("/api/health");
-ok("health endpoint reports ok (200)", health.status === 200 && JSON.parse(health.text).ok === true, `got ${health.status} ${health.text}`);
+let hb = {};
+try { hb = JSON.parse(health.text); } catch {}
+ok("health endpoint reports ok (200)", health.status === 200 && hb.ok === true, `got ${health.status} ${health.text}`);
+ok("health body reveals nothing but ok/problem", Object.keys(hb).every((k) => ["ok", "problem"].includes(k)) && !/postgres|password|secret|@|host|\.replit|:\/\//i.test(health.text), health.text);
+ok("health is marked no-store and noindex", /no-store/.test(health.headers.get("cache-control") || "") && /noindex/.test(health.headers.get("x-robots-tag") || ""));
 const root = await get("/");
 ok('"/" answers 200 directly, not with a redirect', root.status === 200 && /<html[^>]*lang="(ar|en)"/.test(root.text), `got ${root.status}`);
 const rootEn = await get("/", { "accept-language": "en-US,en;q=0.9" });
-ok('"/" follows the visitor\'s language (English)', /<html[^>]*lang="en"/.test(rootEn.text));
 const rootAr = await get("/", { "accept-language": "ar-IQ,ar;q=0.9,en;q=0.5" });
+ok('"/" follows the visitor\'s language (English)', /<html[^>]*lang="en"/.test(rootEn.text));
 ok('"/" follows the visitor\'s language (Arabic)', /<html[^>]*lang="ar"[^>]*dir="rtl"|<html[^>]*dir="rtl"[^>]*lang="ar"/.test(rootAr.text));
+ok('"/" canonical points at the language address, not at "/"', new RegExp('rel="canonical" href="[^"]*/en"').test(rootEn.text) && new RegExp('rel="canonical" href="[^"]*/ar"').test(rootAr.text));
+const cookieAr = await get("/", { "accept-language": "en", cookie: "alyas_lang=ar" });
+ok('"/" honours the saved language cookie over the browser language', /<html[^>]*lang="ar"/.test(cookieAr.text));
+for (const [from, to] of [["/services", "travel"], ["/travel-services", "travel"], ["/conferences", "events"], ["/events-conferences", "events"], ["/contact-us", "contact"], ["/about-us", "about"], ["/about", "about"], ["/contact", "contact"]]) {
+  const r = await get(from, { "accept-language": "en" });
+  ok(`alias ${from} → /en/${to} (308)`, r.status === 308 && new URL(r.headers.get("location"), BASE).pathname === `/en/${to}`, `got ${r.status} ${r.headers.get("location")}`);
+  const ra = await get(from, { "accept-language": "ar" });
+  ok(`alias ${from} → /ar/${to} for Arabic visitors`, ra.status === 308 && new URL(ra.headers.get("location"), BASE).pathname === `/ar/${to}`);
+}
+const slash = await get("/en/about/");
+ok("trailing slash is normalised", slash.status === 308 || slash.status === 200, `got ${slash.status}`);
+ok("unknown address is 404", (await get("/en/no-such-page-xyz")).status === 404);
 
-// 2. Hero says what ALYAS Travel does
+/* ---- 2. Hero says what ALYAS Travel does ---- */
 const en = await get("/en");
 const ar = await get("/ar");
 const enHero = heroText(en.text).toLowerCase();
@@ -75,76 +124,30 @@ for (const w of ["flights", "hotels", "visa", "transportation", "tailored", "bag
 for (const w of ["الطيران", "الفنادق", "التأشيرات", "النقل", "المصمَّمة", "بغداد"]) ok(`Arabic hero mentions “${w}”`, arHero.includes(w), arHero);
 ok("hero keeps flowers and events out of the main message", !/flower|event|conference/i.test(enHero) && !/زهور|فعاليات|مؤتمرات/.test(arHero));
 ok("hero copy is concise (under 150 characters, button included)", heroText(en.text).length < 150 && arHero.length < 150, `${heroText(en.text).length}/${arHero.length}`);
+ok("hero copy is not keyword-stuffed (no repeated long words)", (() => { const w = enHero.replace(/[^a-z ]/g, "").split(/\s+/).filter((x) => x.length > 4); return new Set(w).size === w.length; })(), enHero);
 ok("one h1 in each language", (en.text.match(/<h1[\s>]/g) || []).length === 1 && (ar.text.match(/<h1[\s>]/g) || []).length === 1);
 ok("hero button opens the contact page in this language", heroCopy(en.text).includes('href="/en/contact"') && heroCopy(ar.text).includes('href="/ar/contact"'));
 ok("the animated airplane is still in the hero", en.text.includes('class="hero-plane"') && ar.text.includes('class="hero-plane"'));
 
-// 3. Contact actions come only from configured details
+/* ---- 3. Contact actions come only from configured details ---- */
 const site = (await call("/api/admin/content/site", { cookie: A })).json?.entry;
 const cfg = site?.data?.contact ?? {};
-const waDigits = String(cfg.whatsapp || "").replace(/\D/g, "");
-const phoneDigits = String(cfg.phone || "").replace(/\D/g, "");
 const publishedSite = site?.status === "published";
-if (!publishedSite || (waDigits.length < 7 && phoneDigits.length < 7)) {
-  ok("no WhatsApp or phone action appears when none is configured", !/wa\.me|href="tel:/.test(en.text) && !/wa\.me|href="tel:/.test(ar.text));
+const configured = publishedSite && (String(cfg.whatsapp || "").replace(/\D/g, "").length >= 7 || String(cfg.phone || "").replace(/\D/g, "").length >= 7 || cfg.email);
+if (!configured) {
+  ok("no WhatsApp, phone or email link appears when none is configured", !/wa\.me|href="tel:|href="mailto:/.test(en.text) && !/wa\.me|href="tel:|href="mailto:/.test(ar.text));
 } else {
-  ok("WhatsApp/phone shown match the configured details", (waDigits.length < 7 || en.text.includes(`wa.me/${waDigits}`)) && (waDigits.length >= 7 || en.text.includes("tel:")));
+  console.log("NOTE  contact details are configured on this site; the “nothing configured” assertion was skipped");
 }
-const dockOf = (html) => (html.match(/<div class="dock"[\s\S]*?<\/div>/) || [""])[0];
-ok("mobile contact bar exists on the home page and starts hidden", /class="dock"[^>]*hidden/.test(en.text) || /hidden=""[^>]*class="dock"|class="dock"[^>]*hidden=""/.test(en.text));
+ok("structured data has no phone or email unless configured", configured || !/"telephone"|"email"/.test(en.text));
 const about = await get("/en/about");
-ok("mobile contact bar is visible on inner pages", /class="dock"/.test(about.text) && !/class="dock"[^>]*hidden/.test(about.text));
 const contactPage = await get("/en/contact");
+ok("mobile contact bar exists on the home page and starts hidden", /<nav class="dock"[^>]*hidden/.test(en.text));
+ok("mobile contact bar is visible on inner pages", /<nav class="dock"/.test(about.text) && !/<nav class="dock"[^>]*hidden/.test(about.text));
 ok("no contact bar on the contact page itself", !/class="dock"/.test(contactPage.text));
-ok("contact bar has an accessible name", /class="dock"[^>]*aria-label="[^"]+"|aria-label="[^"]+"[^>]*class="dock"/.test(about.text));
-void dockOf;
+ok("contact bar has an accessible name and is a landmark", /<nav class="dock"[^>]*aria-label="[^"]+"/.test(about.text));
 
-if (MUTATE) {
-  console.log("\n-- configured contact details (temporary) --");
-  const original = JSON.parse(JSON.stringify(site?.data ?? {}));
-  const wasPublished = publishedSite;
-  const setContact = async (patch) => {
-    const data = JSON.parse(JSON.stringify(original));
-    data.contact = { ...(data.contact ?? {}), whatsapp: "", phone: "", ...patch };
-    const s = await call("/api/admin/content/site", { method: "PUT", cookie: A, body: { data } });
-    const p = await call("/api/admin/content/site/publish", { method: "POST", cookie: A });
-    return s.status === 200 && p.status === 200;
-  };
-  try {
-    ok("test WhatsApp number saved and published", await setContact({ whatsapp: "9647700000000" }));
-    const e1 = await get("/en"), a1 = await get("/ar"), p1 = await get("/en/about");
-    ok("WhatsApp button appears in the English hero", heroCopy(e1.text).includes("https://wa.me/9647700000000") && heroCopy(e1.text).includes(">WhatsApp<"));
-    ok("WhatsApp button appears in the Arabic hero", heroCopy(a1.text).includes("https://wa.me/9647700000000") && heroCopy(a1.text).includes(">واتساب<"));
-    ok("WhatsApp link opens safely in a new tab", /href="https:\/\/wa\.me\/9647700000000" target="_blank" rel="noopener noreferrer"/.test(e1.text));
-    ok("WhatsApp button appears in the mobile contact bar", /class="dock"[\s\S]*?wa\.me\/9647700000000/.test(p1.text));
-
-    ok("test phone number saved and published (WhatsApp cleared)", await setContact({ phone: "+964 770 000 0000" }));
-    const e2 = await get("/en"), a2 = await get("/ar"), p2 = await get("/en/about");
-    ok("phone action appears when only a phone is configured", heroCopy(e2.text).includes('href="tel:+9647700000000"') && heroCopy(e2.text).includes("Call us") && !e2.text.includes("wa.me"));
-    ok("phone action is labelled in Arabic", heroCopy(a2.text).includes('href="tel:+9647700000000"') && heroCopy(a2.text).includes("اتصل بنا"));
-    ok("phone action appears in the mobile contact bar", /class="dock"[\s\S]*?tel:\+9647700000000/.test(p2.text));
-
-    ok("both configured: WhatsApp is preferred, one secondary action only", await setContact({ whatsapp: "9647700000000", phone: "+964 770 000 0000" }));
-    const e3 = await get("/en");
-    ok("only one secondary action in the hero", heroCopy(e3.text).includes("wa.me") && !heroCopy(e3.text).includes("tel:"));
-    ok("a malformed number is ignored, nothing is invented", await setContact({ whatsapp: "12", phone: "n/a" }));
-    const e4 = await get("/en");
-    ok("too-short WhatsApp and non-numeric phone produce no action", !/wa\.me|href="tel:/.test(e4.text));
-  } finally {
-    // restore exactly what was there before
-    const restore = JSON.parse(JSON.stringify(original));
-    await call("/api/admin/content/site", { method: "PUT", cookie: A, body: { data: restore } });
-    if (wasPublished) await call("/api/admin/content/site/publish", { method: "POST", cookie: A });
-    else {
-      // the site document did not exist before: publish the restored (empty-contact) document so nothing test-related stays live
-      await call("/api/admin/content/site/publish", { method: "POST", cookie: A });
-    }
-  }
-  const after = await get("/en");
-  ok("original contact details restored (no test number left on the site)", !after.text.includes("9647700000000"));
-}
-
-// 4. Flowers and event management are secondary
+/* ---- 4. Flowers and event management are secondary ---- */
 const alsoEn = (en.text.match(/<section class="also"[\s\S]*?<\/section>/) || [""])[0];
 const alsoAr = (ar.text.match(/<section class="also"[\s\S]*?<\/section>/) || [""])[0];
 ok("“Also from ALYAS Group” row exists in English with two cards", alsoEn.includes("Also from ALYAS Group") && (alsoEn.match(/class="also-card"/g) || []).length === 2);
@@ -153,39 +156,152 @@ ok("it covers event management and flowers", /management/i.test(alsoEn) && /flow
 ok("its links go to the events page", alsoEn.includes('href="/en/events"') && alsoEn.includes('href="/en/events#floral"') && alsoAr.includes('href="/ar/events"'));
 ok("the events page has the #floral target", (await get("/en/events")).text.includes('id="floral"'));
 const idx = (h, re) => h.search(re);
-ok("the secondary row comes after the travel services", idx(en.text, /class="showcase"/) < idx(en.text, /class="also"/) && idx(en.text, /class="also"/) < idx(en.text, /class="cta"/));
+ok("the secondary row comes after the travel services and before the closing call to action", idx(en.text, /class="showcase"/) < idx(en.text, /class="also"/) && idx(en.text, /class="also"/) < idx(en.text, /class="cta"/));
 ok("the old large flowers band is gone from the home page", !/class="floral"/.test(en.text));
-ok("travel services are the first content after the hero", idx(en.text, /class="intro"/) < idx(en.text, /class="showcase"/) && idx(en.text, /class="hero"/) < idx(en.text, /class="intro"/));
+ok("travel services come first after the hero", idx(en.text, /class="hero"/) < idx(en.text, /class="intro"/) && idx(en.text, /class="intro"/) < idx(en.text, /class="showcase"/));
+ok("the secondary row has no full-bleed service tiles", !/class="tile /.test(alsoEn));
 
-// 5. No sample content in this database
+/* ---- 5. No sample content on the page ---- */
 const offers = (await call("/api/admin/content/offer", { cookie: A })).json?.entries ?? [];
 const events = (await call("/api/admin/content/event", { cookie: A })).json?.entries ?? [];
-const liveOffers = offers.filter((o) => o.status === "published").length;
-const liveEvents = events.filter((o) => o.status === "published").length;
-ok("no offers section on the page when no offer is published", liveOffers > 0 || !/class="offers"/.test(en.text));
-ok("no featured-event section when no event is published", liveEvents > 0 || !/class="feature"/.test(en.text));
+const news = (await call("/api/admin/content/news", { cookie: A })).json?.entries ?? [];
+ok("no offers section on the page when no offer is published", offers.some((o) => o.status === "published") || !/class="offers"/.test(en.text));
+ok("no featured-event section when no event is published", events.some((o) => o.status === "published") || !/class="feature"/.test(en.text));
+const evPage = await get("/en/events");
+ok("no news or upcoming-events blocks on the events page when none are published", (news.some((o) => o.status === "published") || !/class="news-list"/.test(evPage.text)) && (events.some((o) => o.status === "published") || !/class="agenda"/.test(evPage.text)));
 
-// 6. SEO in both languages
-for (const [lang, html] of [["en", en.text], ["ar", ar.text]]) {
-  const title = meta(html, /<title>([^<]*)<\/title>/);
-  ok(`${lang}: title says what ALYAS Travel does`, lang === "en" ? /Flights, hotels, visas/.test(title) : /طيران وفنادق وتأشيرات/.test(title), title);
-  ok(`${lang}: title is a sensible length (under 75 characters)`, title.length > 10 && title.length < 75, `${title.length}`);
-  const desc = meta(html, /<meta name="description" content="([^"]*)"/);
-  ok(`${lang}: meta description is present and travel-focused`, desc.length > 60 && desc.length < 320 && (lang === "en" ? /travel agency/i.test(desc) : /وكالة سفر/.test(desc)), desc);
-  ok(`${lang}: canonical points at this language`, new RegExp(`rel="canonical" href="[^"]*/${lang}"`).test(html));
-  ok(`${lang}: hreflang for both languages and x-default`, /hrefLang="ar"/i.test(html) && /hrefLang="en"/i.test(html) && /hrefLang="x-default"/i.test(html));
-  ok(`${lang}: open graph locale and title`, new RegExp(`property="og:locale" content="${lang === "ar" ? "ar_IQ" : "en_US"}"`).test(html) && /property="og:title"/.test(html));
-  ok(`${lang}: html lang and dir are correct`, lang === "en" ? /lang="en"/.test(html) && /dir="ltr"/.test(html) : /lang="ar"/.test(html) && /dir="rtl"/.test(html));
-  const ld = meta(html, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
-  let parsed = null;
-  try { parsed = JSON.parse(ld); } catch {}
-  ok(`${lang}: structured data is valid JSON for a TravelAgency`, parsed?.["@type"] === "TravelAgency" && !!parsed?.name, ld.slice(0, 80));
-  ok(`${lang}: structured data invents no phone or email`, !parsed?.telephone || phoneDigits.length >= 7);
+/* ---- 6. SEO and structure on every public page, both languages ---- */
+for (const lang of ["en", "ar"]) {
+  for (const p of ["", "/about", "/travel", "/events", "/contact"]) {
+    const r = await get(`/${lang}${p}`);
+    const label = `${lang}${p || "/"}`;
+    ok(`${label}: 200 with one h1`, r.status === 200 && (r.text.match(/<h1[\s>]/g) || []).length === 1, `status ${r.status}, h1 ${(r.text.match(/<h1[\s>]/g) || []).length}`);
+    ok(`${label}: html lang and dir`, lang === "en" ? /<html[^>]*lang="en"/.test(r.text) && /dir="ltr"/.test(r.text) : /<html[^>]*lang="ar"/.test(r.text) && /dir="rtl"/.test(r.text));
+    ok(`${label}: canonical is itself`, new RegExp(`rel="canonical" href="[^"]*/${lang}${p}"`).test(r.text));
+    ok(`${label}: hreflang ar, en and x-default`, /hrefLang="ar"/i.test(r.text) && /hrefLang="en"/i.test(r.text) && /hrefLang="x-default"/i.test(r.text));
+    ok(`${label}: open graph title, description and locale`, /property="og:title"/.test(r.text) && /property="og:description"/.test(r.text) && new RegExp(`property="og:locale" content="${lang === "ar" ? "ar_IQ" : "en_US"}"`).test(r.text));
+    const title = meta(r.text, /<title>([^<]*)<\/title>/);
+    ok(`${label}: title present and under 75 characters`, title.length > 3 && title.length < 75, title);
+    const imgs = r.text.match(/<img\b[^>]*>/g) || [];
+    ok(`${label}: every image has an alt attribute (empty for decorative)`, imgs.every((i) => /\balt="/.test(i)), imgs.filter((i) => !/\balt="/.test(i)).join(" ").slice(0, 120));
+    ok(`${label}: every image declares width and height (no layout shift)`, imgs.every((i) => /\bwidth="\d+"/.test(i) && /\bheight="\d+"/.test(i)), imgs.filter((i) => !/\bwidth="\d+"/.test(i)).join(" ").slice(0, 120));
+    const lds = [...r.text.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+    ok(`${label}: structured data (if any) is valid JSON`, lds.every((l) => { try { JSON.parse(decode(l)); return true; } catch { return false; } }));
+  }
+  const home = lang === "en" ? en.text : ar.text;
+  const title = meta(home, /<title>([^<]*)<\/title>/);
+  ok(`${lang}: home title says what ALYAS Travel does`, lang === "en" ? /Flights, hotels, visas/.test(title) : /طيران وفنادق وتأشيرات/.test(title), title);
+  const desc = meta(home, /<meta name="description" content="([^"]*)"/);
+  ok(`${lang}: home description is present and travel-focused`, desc.length > 60 && desc.length < 320 && (lang === "en" ? /travel agency/i.test(desc) : /وكالة سفر/.test(desc)), desc);
+  const ld = JSON.parse(decode(meta(home, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/)) || "{}");
+  ok(`${lang}: structured data is a TravelAgency with a name`, ld["@type"] === "TravelAgency" && !!ld.name);
+  ok(`${lang}: structured data states only Baghdad, Iraq as the address`, ld.address?.addressLocality === "Baghdad" && ld.address?.addressCountry === "IQ" && !ld.address?.streetAddress);
+  ok(`${lang}: structured data has no rating, review, price or award fields`, !/aggregateRating|"review"|priceRange|"award"|"offers"/.test(JSON.stringify(ld)));
 }
 const sm = await get("/sitemap.xml");
-ok("sitemap lists the homepage in both languages", /\/en<\/loc>/.test(sm.text) && /\/ar<\/loc>/.test(sm.text));
+ok("sitemap lists the homepage and inner pages in both languages", ["/en", "/ar", "/en/about", "/ar/about", "/en/contact", "/ar/contact"].every((p) => sm.text.includes(`${p}</loc>`)));
+ok("sitemap does not list the admin, previews or the API", !/\/admin|\/preview|\/api/.test(sm.text));
 const robots = await get("/robots.txt");
-ok("robots.txt allows the site and hides the admin", /Disallow:\s*\/admin/i.test(robots.text) && /sitemap/i.test(robots.text), robots.text.slice(0, 120));
+ok("robots.txt hides admin, api and preview and names the sitemap", /Disallow:\s*\/admin/i.test(robots.text) && /Disallow:\s*\/api\//i.test(robots.text) && /Disallow:\s*\/preview\//i.test(robots.text) && /sitemap/i.test(robots.text));
+const nf = await get("/en/no-such-page-xyz");
+ok("a missing page answers 404 and asks search engines not to index it", nf.status === 404 && /name="robots" content="noindex/.test(nf.text), `status ${nf.status}`);
+
+/* ---- 7. Behaviour that needs test data (isolated database only) ---- */
+if (MUTATE) {
+  console.log("\n-- mutating checks: temporary test values, restored afterwards --");
+  const homeEntry = (await call("/api/admin/content/home", { cookie: A })).json?.entry;
+  const originalHome = JSON.parse(JSON.stringify(homeEntry?.data ?? {}));
+  const homeWasPublished = homeEntry?.status === "published";
+  const originalSite = JSON.parse(JSON.stringify(site?.data ?? {}));
+  const siteWasPublished = publishedSite;
+
+  const setHomeSub = async (sub) => {
+    const data = JSON.parse(JSON.stringify(originalHome));
+    data.hero = { ...(data.hero ?? {}), sub };
+    const s = await call("/api/admin/content/home", { method: "PUT", cookie: A, body: { data } });
+    const p = await call("/api/admin/content/home/publish", { method: "POST", cookie: A });
+    return s.status === 200 && p.status === 200;
+  };
+  const setContact = async (patch) => {
+    const data = JSON.parse(JSON.stringify(originalSite));
+    data.contact = { ...(data.contact ?? {}), whatsapp: "", phone: "", email: "", ...patch };
+    const s = await call("/api/admin/content/site", { method: "PUT", cookie: A, body: { data } });
+    if (s.status !== 200) return { saved: false, status: s.status, fields: s.json?.fields };
+    const p = await call("/api/admin/content/site/publish", { method: "POST", cookie: A });
+    return { saved: p.status === 200, status: s.status };
+  };
+  const OLD = {
+    en: "Flights, hotels, visa assistance and transport, arranged by our team in Baghdad.",
+    ar: "تذاكر الطيران والفنادق والمساعدة في التأشيرات والنقل، ينظّمها فريقنا في بغداد.",
+  };
+  try {
+    // A. starter wording is upgraded; edited wording is preserved exactly
+    ok("an untouched older starter sentence is stored, as an older site would have it", await setHomeSub(OLD));
+    const u = await get("/en"), ua = await get("/ar");
+    ok("…visitors see the NEW default wording (English)", heroSub(u.text).startsWith("ALYAS Travel arranges flights, hotels, visa assistance, transportation"), heroSub(u.text));
+    ok("…visitors see the NEW default wording (Arabic)", heroSub(ua.text).startsWith("الياس للسفر من بغداد"), heroSub(ua.text));
+    const custom = { en: "Your trip, handled by people who know Baghdad.", ar: "رحلتك بيد أناس يعرفون بغداد." };
+    ok("an administrator edits the hero sentence", await setHomeSub(custom));
+    const c = await get("/en"), ca = await get("/ar");
+    ok("the edited English sentence is shown exactly as written", decode(heroSub(c.text)) === custom.en, heroSub(c.text));
+    ok("the edited Arabic sentence is shown exactly as written", decode(heroSub(ca.text)) === custom.ar, heroSub(ca.text));
+    ok("only one language edited: the other is kept exactly as stored (not upgraded)", await setHomeSub({ en: custom.en, ar: OLD.ar }));
+    ok("…the Arabic older text is preserved when only English was edited", heroSub((await get("/ar")).text) === OLD.ar);
+    ok("empty stored wording falls back to the current default", (await setHomeSub({ en: "", ar: "" })) && heroSub((await get("/en")).text).startsWith("ALYAS Travel arranges"));
+
+    // B. contact validation and consistency
+    const bad = [
+      ["whatsapp", "0770 123 4567", "local number without country code"],
+      ["whatsapp", "12", "too short"],
+      ["whatsapp", "call me", "letters"],
+      ["phone", "n/a", "text"],
+      ["phone", "++964770", "double plus"],
+      ["phone", "123456789;ext=1", "tel: parameter injection"],
+      ["email", "bad email", "spaces"],
+      ["email", "a@b.co?subject=hi", "query string"],
+    ];
+    for (const [field, value, why] of bad) {
+      const r = await setContact({ [field]: value });
+      ok(`the CMS refuses ${field} “${value}” (${why}) with a field message`, !r.saved && r.status === 400 && !!r.fields?.[`contact.${field}`], JSON.stringify(r));
+    }
+    ok("after refused values, nothing test-related is public", !/wa\.me|href="tel:|href="mailto:/.test((await get("/en")).text));
+
+    const good = await setContact({ whatsapp: "+964 770 123 4567", phone: "(0770) 123-4567", email: "info@alyas-check.example" });
+    ok("valid WhatsApp, phone and email are accepted and published", good.saved);
+    const e = await get("/en"), a = await get("/ar"), pgs = await get("/en/about"), cp = await get("/en/contact"), cpa = await get("/ar/contact");
+    const WA = "https://wa.me/9647701234567";
+    ok("hero: WhatsApp link uses the normalised number (English)", heroCopy(e.text).includes(`href="${WA}"`) && heroCopy(e.text).includes(">WhatsApp"));
+    ok("hero: WhatsApp link uses the normalised number (Arabic)", heroCopy(a.text).includes(`href="${WA}"`) && heroCopy(a.text).includes(">واتساب"));
+    ok("hero: only one secondary action (WhatsApp wins over phone)", !heroCopy(e.text).includes("tel:"));
+    ok("mobile bar: WhatsApp link, same number", new RegExp(`<nav class="dock"[\\s\\S]*?href="${WA}"`).test(pgs.text));
+    ok("footer: WhatsApp, phone and email links are normalised", e.text.includes(`href="${WA}"`) && e.text.includes('href="tel:07701234567"') && e.text.includes('href="mailto:info@alyas-check.example"'));
+    ok("contact page: WhatsApp, phone and email links are normalised", cp.text.includes(`href="${WA}"`) && cp.text.includes('href="tel:07701234567"') && cp.text.includes('href="mailto:info@alyas-check.example"'));
+    ok("contact page (Arabic): same links", cpa.text.includes(`href="${WA}"`) && cpa.text.includes('href="tel:07701234567"'));
+    ok("external WhatsApp links open safely (noopener noreferrer) and announce the new tab", new RegExp(`href="${WA}" target="_blank" rel="noopener noreferrer"`).test(e.text) && e.text.includes("(opens in a new tab)") && a.text.includes("(يفتح في نافذة جديدة)"));
+    ok("tel: and mailto: links do not open a new tab", !/href="tel:[^"]*" target=/.test(e.text) && !/href="mailto:[^"]*" target=/.test(e.text));
+    const ld = JSON.parse(decode(meta(e.text, /<script type="application\/ld\+json">([\s\S]*?)<\/script>/)));
+    ok("structured data: telephone and email are the normalised configured values", ld.telephone === "07701234567" && ld.email === "info@alyas-check.example", JSON.stringify({ t: ld.telephone, e: ld.email }));
+    ok("no other phone, email or WhatsApp value appears anywhere", (e.text.match(/wa\.me\/\d+/g) || []).every((m) => m === "wa.me/9647701234567") && (e.text.match(/href="tel:[^"]+"/g) || []).every((m) => m === 'href="tel:07701234567"'));
+
+    const r00 = await setContact({ whatsapp: "00964 770 000 0000", phone: "+964-770-000-0000" });
+    ok("00-prefixed WhatsApp and +-prefixed phone are accepted", r00.saved);
+    const e2 = await get("/en");
+    ok("00964… becomes wa.me/964… and +964… stays as a tel: link", e2.text.includes("https://wa.me/9647700000000") && e2.text.includes('href="tel:+9647700000000"'));
+
+    const onlyPhone = await setContact({ phone: "+964 770 000 0000" });
+    ok("phone only: hero shows Call us (English and Arabic)", onlyPhone.saved && heroCopy((await get("/en")).text).includes('href="tel:+9647700000000"') && heroCopy((await get("/ar")).text).includes("اتصل بنا"));
+    ok("phone only: the call link does not open a new tab", !/href="tel:[^"]*"[^>]*target=/.test((await get("/en")).text));
+    ok("clearing everything removes every contact link again", (await setContact({})).saved && !/wa\.me|href="tel:|href="mailto:/.test((await get("/en")).text));
+  } finally {
+    await call("/api/admin/content/site", { method: "PUT", cookie: A, body: { data: originalSite } });
+    await call("/api/admin/content/site/publish", { method: "POST", cookie: A });
+    await call("/api/admin/content/home", { method: "PUT", cookie: A, body: { data: originalHome } });
+    if (homeWasPublished) await call("/api/admin/content/home/publish", { method: "POST", cookie: A });
+    void siteWasPublished;
+  }
+  const after = await get("/en");
+  ok("originals restored: no test contact details or test wording remain", !/alyas-check\.example|9647701234567|9647700000000/.test(after.text) && !heroSub(after.text).includes("people who know Baghdad"));
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

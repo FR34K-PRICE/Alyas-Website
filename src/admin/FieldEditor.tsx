@@ -217,8 +217,9 @@ function Control({ id, f, value, onChange, lang, invalid }: { id: string; f: Fie
     <input
       className="ai"
       type={f.type === "url" ? "url" : "text"}
-      inputMode={f.type === "url" ? "url" : undefined}
-      dir={dir ?? (f.type === "url" || f.type === "link" ? "ltr" : undefined)}
+      inputMode={f.type === "url" ? "url" : f.type === "phone" || f.type === "whatsapp" ? "tel" : f.type === "email" ? "email" : undefined}
+      autoComplete={f.type === "phone" || f.type === "whatsapp" || f.type === "email" ? "off" : undefined}
+      dir={dir ?? (["url", "link", "phone", "whatsapp", "email"].includes(f.type) ? "ltr" : undefined)}
       value={value}
       maxLength={("max" in f && f.max) || 200}
       onChange={(e) => onChange(e.target.value)}

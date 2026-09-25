@@ -58,10 +58,25 @@ Generate a secret: `node -e "console.log(require('crypto').randomBytes(48).toStr
    npm run create-admin
    ```
 5. **Deploy → Autoscale** (build: `npm run build`, run: `npm run start`). Tables are created automatically on first start.
-6. Open `https://YOUR-DEPLOYMENT/api/health`. **200 `{"ok":true}`** means the server, database and secrets are in place; a **503** names what is missing (`DATABASE_URL`, `SESSION_SECRET`, or an unreachable database). Then review the site. Point the domain at it only when you are happy.
-7. Before launch, run `npm run audit:content` in the Shell. It is read-only and lists offers, events, news, custom pages and accounts, flagging anything that looks like sample or test content, so you can remove it from the admin panel.
+6. Open `/api/health` on the running server (for example `https://YOUR-DEPLOYMENT/api/health`); see [Health check](#health-check) for how to read it. Then review the site itself in a browser. Point the domain at it only when you are happy.
+7. Before launch, run `npm run audit:content` in the Shell (see [Content audit](#content-audit)) and review anything it lists in the admin panel.
 
-`/` answers with the visitor's language directly (status 200), so a health check on `/` succeeds. If `SITE_URL` is not set, canonical links and the sitemap use the deployment's own domain (`REPLIT_DOMAINS`) when running as a Replit deployment; set `SITE_URL` to the final public address (for example your custom domain) so they always match it.
+### Health check
+
+`GET /api/health` reports on the server that answers it:
+
+| Response | Meaning |
+| --- | --- |
+| **200** `{"ok":true}` | This running server has the settings it needs and can reach its database. |
+| **503** `{"ok":false,"problem":"DATABASE_URL is not set."}` | Add `DATABASE_URL` for this server, then restart it. |
+| **503** `…"SESSION_SECRET is not set (32+ characters required)."` | Add a `SESSION_SECRET` of 32 or more characters. |
+| **503** `…"The database could not be reached."` | The database is down or `DATABASE_URL` is wrong. The exact error is not exposed; look in the server log. |
+
+A passing check **does not prove the site is published or reachable by visitors** at its public address: it only says the server you asked is healthy. Always load the public URL in a browser too. The body contains only `ok` and a fixed sentence: never a secret value, connection string, host name or database error text. The answer is cached for about five seconds, so it cannot be used to hammer the database, and it is marked `noindex`.
+
+### Other deployment notes
+
+`/` answers with the visitor's language directly (status 200) instead of redirecting, and its canonical link points at `/en` or `/ar`. The older short addresses (`/services`, `/contact-us`, `/about-us`, …) and any address typed without a language still redirect (308 or 307) to the visitor's language. If `SITE_URL` is not set, canonical links and the sitemap use the deployment's own domain (`REPLIT_DOMAINS`) when running as a Replit deployment; set `SITE_URL` to the final public address (for example your custom domain) so they always match it.
 
 The filesystem on Replit deployments is temporary, so nothing is written to disk in production: images are processed with `sharp` and stored in Postgres (`media_files`), served with long-lived cache headers.
 
@@ -108,16 +123,28 @@ BASE_URL=http://localhost:3000 ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='...' 
 
 `check:security` signs in, creates a throw-away editor to test role limits, then disables it. It does not change published content.
 
-`check:home` checks the public homepage: the hero copy in both languages, that contact actions come only from the details saved in the CMS, the secondary "Also from ALYAS Group" row, SEO metadata and structured data in both languages, and the health endpoint. It is read-only unless you set `HOME_CHECK_MUTATE=1`, which temporarily saves test contact details in Site & brand and restores your originals (use a local or test database only).
+`check:home` checks the public site: the hero copy in both languages, that contact actions come only from the details saved in the CMS, the secondary "Also from ALYAS Group" row, `/`, the old aliases and canonical links, SEO metadata, images and structured data on every public page in both languages, and the health endpoint's contents. It is read-only unless you set `HOME_CHECK_MUTATE=1`, which also proves that untouched starter wording is upgraded while edited wording is preserved exactly, and that WhatsApp/phone/email validation and normalisation agree in the hero, mobile bar, footer, contact page and structured data. That mode temporarily saves and publishes test values in Home and Site & brand and restores your originals: **use a local or isolated test database only, never production.**
+
+`check:audit` (`TEST_DATABASE_URL=… npm run check:audit`) checks the content audit against clearly named seeded rows in an isolated local database and removes them afterwards; it refuses to run against anything but localhost.
 
 `check:pages` exercises the page builder end to end (address rules, unsafe links, drafts, preview, publish/unpublish, address changes, menu limit, sitemap, `hreflang`, roles, and that the built-in pages still open). It creates throw-away pages, one offer and one event, and deletes them afterwards. Both scripts leave a disabled throw-away editor account behind.
 
 ## Homepage
 
 - **Message.** The hero states what ALYAS Travel does: flights, hotels, visa assistance, transportation and tailored trips from Baghdad. Edit it under **Home page → Hero → Supporting text**. Earlier built-in wording that was never edited is upgraded automatically to the current wording; text an editor has changed is never touched.
-- **Contact actions.** The main action is "Plan Your Trip" (the inquiry form), in the hero and header. A second action, **WhatsApp or Call**, appears only if a valid number is saved under **Site & brand → Contact details** (WhatsApp is preferred; a number needs 7–15 digits). Nothing is defaulted or invented: with no details saved, only the inquiry action shows. On phones a slim contact bar stays at the bottom (on the homepage it appears once the hero has scrolled away; it is hidden on the contact page).
+- **Contact actions.** The main action is "Plan Your Trip" (the inquiry form), in the hero and header. A second action, **WhatsApp or Call**, appears only if a usable number is saved under **Site & brand → Contact details** (WhatsApp is preferred). Nothing is defaulted or invented: with no details saved, only the inquiry action shows. On phones a slim contact bar stays at the bottom (on the homepage it appears once the hero has scrolled away; it is hidden on the contact page). It is a labelled navigation landmark, its buttons are 48 px tall, focus scrolls clear of it, and a WhatsApp link opens in a new tab (`noopener noreferrer`) with "(opens in a new tab)" announced to screen readers.
+- **How contact details are checked.** One set of rules ([`src/content/contact-rules.ts`](src/content/contact-rules.ts)) is used both when saving in the CMS and when rendering the hero, mobile bar, footer, contact page and structured data, so they cannot disagree:
+  - *WhatsApp*: international format, 7–15 digits, country code first. `+964 770 123 4567` and `00964 770 123 4567` both become `wa.me/9647701234567`. A local number starting with a single `0` is refused (WhatsApp cannot open it), as are letters, a misplaced `+`, or too few/many digits.
+  - *Phone*: 7–15 digits with an optional leading `+`; `00…` becomes `+…`; a local number such as `0770 123 4567` is fine for calling. Anything else is refused.
+  - *Email*: one plain address; lists, display names and `?subject=` style additions are refused.
+  - The CMS shows a message under the field and will not save a value that fails these rules. Values that fail (for example ones saved before these rules existed) are ignored when rendering: no broken `tel:`, `wa.me` or `mailto:` link is ever produced. Structured data uses only the normalised values.
 - **Secondary services.** Event management and floral arrangements are shown as a quiet "Also from ALYAS Group" row after the travel content, not in the hero. Their text comes from **Events & conferences page** (management) and **Home page → Floral strip**.
-- **Empty sections stay hidden.** No offers, upcoming-event or news content appears until real items are published. `npm run audit:content` lists what a database contains.
+- **Empty sections stay hidden.** No offers, upcoming-event or news content appears until real items are published.
+- **Known limitation.** A missing page returns a real 404 status with a `noindex` tag and, in a browser, a correctly localised 404 page (right `lang`/`dir`, one H1). Next.js delivers that page's markup after scripts run, so the raw HTML a non-JavaScript client receives is an empty shell.
+
+### Content audit
+
+`npm run audit:content` (run it in the Replit Shell; it uses the database that is already configured there) lists offers, events, news, custom pages, services, media and inquiry counts, and accounts. It **only reads**: it runs in a `READ ONLY` transaction, confirms the database says so before reading anything, and always rolls back. It then lists items under "Review" whose wording resembles test or sample content, each with the field and the reason. These are hints for a person, not verdicts: real content can contain such words, so nothing is deleted or hidden, and you decide in the admin panel. It looks only at the relevant text fields (titles, summaries, destinations, venues, page headings and text), matches whole words, and ignores everyday wording such as "free sample", "test drive" or "Bar Hall". `npm run check:audit` (isolated local test database only) proves this behaviour.
 
 ## Page builder (custom pages)
 

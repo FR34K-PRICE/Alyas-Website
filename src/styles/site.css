@@ -1590,7 +1590,15 @@ html[lang="ar"] .also-copy p {
 /* Phones: a wider, slightly denser soft scrim so the copy stays readable where it crosses bright rock highlights. */
 @media (max-width: 899px) {
   .hero-copy::before {
-    inset: -40px -14px -30px -14px;
-    background: radial-gradient(ellipse at 50% 56%, rgba(3, 26, 44, 0.86) 0%, rgba(3, 26, 44, 0.72) 55%, rgba(3, 26, 44, 0) 92%);
+    /* "closest-side" makes the gradient reach full transparency exactly at the box edges, so no edge is visible */
+    inset: -84px -40px -44px -40px;
+    background: radial-gradient(ellipse closest-side at 50% 56%, rgba(3, 26, 44, 0.86) 0%, rgba(3, 26, 44, 0.8) 62%, rgba(3, 26, 44, 0.4) 84%, rgba(3, 26, 44, 0) 100%);
+  }
+}
+
+/* Keyboard users: an element that receives focus must scroll into view above the fixed mobile contact bar. */
+@media (max-width: 767px) {
+  html:has(.dock:not([hidden])) {
+    scroll-padding-bottom: 92px;
   }
 }

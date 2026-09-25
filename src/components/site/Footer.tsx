@@ -1,7 +1,7 @@
 import { DICT } from "@/i18n/dict";
 import { pick, type Lang } from "@/content/schema";
 import { SocialIcon } from "./Icons";
-import { validPhone, validWhatsapp } from "@/site/contact";
+import { contactDetails } from "@/site/contact";
 
 const SOCIAL = [
   ["facebook", "Facebook"],
@@ -14,12 +14,11 @@ const SOCIAL = [
 export function Footer({ lang, base, site }: { lang: Lang; base: string; site: any }) {
   const t = DICT[lang];
   const c = site.contact;
-  const phone: string = validPhone(c.phone) ? c.phone : "";
-  const wa: string = validWhatsapp(c.whatsapp);
+  const d = contactDetails(site);
   const address = pick(c.address, lang);
   const hours = pick(c.hours, lang);
   const socials = SOCIAL.filter(([k]) => site.social[k]);
-  const hasContact = !!(phone || wa || c.email || address || hours);
+  const hasContact = !!(d.phone || d.whatsappHref || d.email || address || hours);
 
   return (
     <footer className="site-footer">
@@ -46,19 +45,22 @@ export function Footer({ lang, base, site }: { lang: Lang; base: string; site: a
           <h2 className="footer-h">{t.footer.reach}</h2>
           {hasContact ? (
             <ul className="footer-contact">
-              {phone && (
+              {d.phoneHref && (
                 <li>
-                  <a href={`tel:${phone.replace(/[^\d+]/g, "")}`} dir="ltr">{phone}</a>
+                  <a href={d.phoneHref} dir="ltr">{d.phone}</a>
                 </li>
               )}
-              {wa && (
+              {d.whatsappHref && (
                 <li>
-                  <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer">{t.cta.whatsapp}</a>
+                  <a href={d.whatsappHref} target="_blank" rel="noopener noreferrer">
+                    {t.cta.whatsapp}
+                    <span className="sr-only"> {t.cta.newTab}</span>
+                  </a>
                 </li>
               )}
-              {c.email && (
+              {d.emailHref && (
                 <li>
-                  <a href={`mailto:${c.email}`} dir="ltr">{c.email}</a>
+                  <a href={d.emailHref} dir="ltr">{d.email}</a>
                 </li>
               )}
               {address && <li>{address}</li>}

@@ -7,6 +7,7 @@ export interface ContactDockProps {
   planHref: string;
   planLabel: string;
   secondary?: { href: string; label: string; external: boolean };
+  newTabLabel?: string;
   /** "after-hero": appears once the home hero has scrolled away (the hero already has its own button). */
   mode: "always" | "after-hero";
 }
@@ -16,7 +17,7 @@ export interface ContactDockProps {
  * The secondary button (WhatsApp or phone) exists only when those details are configured in the CMS.
  * Hidden from tablet width up, where the header already carries the button.
  */
-export function ContactDock({ label, planHref, planLabel, secondary, mode }: ContactDockProps) {
+export function ContactDock({ label, planHref, planLabel, secondary, newTabLabel, mode }: ContactDockProps) {
   const [visible, setVisible] = useState(mode === "always");
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export function ContactDock({ label, planHref, planLabel, secondary, mode }: Con
       {secondary && (
         <a className="btn btn--dark" href={secondary.href} {...(secondary.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
           {secondary.label}
+          {secondary.external && newTabLabel && <span className="sr-only"> {newTabLabel}</span>}
         </a>
       )}
     </nav>

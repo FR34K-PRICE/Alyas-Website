@@ -58,9 +58,10 @@ export function Frame({ lang, base, bundle, media, tone, preview, dock = "always
           label={t.cta.contactActions}
           planHref={`${base}/contact`}
           planLabel={t.cta.plan}
+          newTabLabel={t.cta.newTab}
           secondary={(() => {
             const q = quickAction(site, lang, true);
-            return q ? { href: q.href, label: q.label, external: q.kind === "whatsapp" } : undefined;
+            return q ? { href: q.href, label: q.label, external: q.external } : undefined;
           })()}
         />
       )}

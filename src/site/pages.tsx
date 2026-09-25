@@ -7,7 +7,7 @@ import { Photo, mediaUrl, type MediaMap } from "@/components/site/Img";
 import { ContactForm } from "@/components/site/ContactForm";
 import { OFFER_FALLBACKS, PHOTOS, PHOTO_FOR_ICON, dims, photoSrc, srcSet, type PhotoKey } from "./photos";
 import { absolute } from "./data";
-import { quickAction, validPhone, validWhatsapp } from "./contact";
+import { contactDetails, quickAction } from "./contact";
 
 export interface Ctx {
   lang: Lang;
@@ -147,9 +147,10 @@ function heroProps(ctx: Ctx, sub: string): HeroProps {
     ctaHref: `${base}/contact`,
     secondary: (() => {
       const q = quickAction(b.site, lang, true);
-      return q ? { href: q.href, label: q.label, external: q.kind === "whatsapp" } : undefined;
+      return q ? { href: q.href, label: q.label, external: q.external } : undefined;
     })(),
     actionsLabel: DICT[lang].cta.contactActions,
+    newTabLabel: DICT[lang].cta.newTab,
     photo,
     photoAlt: custom ? (lang === "ar" ? info?.alt_ar || info?.alt_en : info?.alt_en || info?.alt_ar) || "" : pick(PHOTOS.hero.alt, lang),
     foreground,
@@ -209,8 +210,8 @@ export function HomePage(ctx: Ctx) {
     description: pick(site.seo.description, lang),
     address: { "@type": "PostalAddress", addressLocality: "Baghdad", addressCountry: "IQ" },
     ...(socials.length ? { sameAs: socials } : {}),
-    ...(validPhone(site.contact.phone) ? { telephone: site.contact.phone } : {}),
-    ...(site.contact.email ? { email: site.contact.email } : {}),
+    ...(contactDetails(site).telephone ? { telephone: contactDetails(site).telephone } : {}),
+    ...(contactDetails(site).email ? { email: contactDetails(site).email } : {}),
     ...(site.brand.logo ? { logo: absolute(mediaUrl(site.brand.logo, 960)) } : {}),
   };
 
@@ -573,7 +574,7 @@ export function ContactPage(ctx: Ctx) {
   const socials = (["facebook", "instagram", "linkedin", "youtube", "tiktok"] as const).filter((k) => b.site.social[k]);
   const address = pick(s.address, lang);
   const hours = pick(s.hours, lang);
-  const wa = validWhatsapp(s.whatsapp);
+  const d = contactDetails(b.site);
   const embed: string = /^https:\/\//.test(s.mapEmbed || "") ? s.mapEmbed : "";
 
   // Resolve "service:flights" / "offer:slug" / "event:slug" into a readable title.
@@ -598,19 +599,22 @@ export function ContactPage(ctx: Ctx) {
           <aside className="contact-info" aria-label={t.footer.reach}>
             <Photo id={c.image} media={media} lang={lang} fallback="hero" ratio="4 / 3" pos="34% 50%" sizes="(min-width: 900px) 36vw, 100vw" className="contact-photo" />
             <ul className="contact-list">
-              {validPhone(s.phone) && (
+              {d.phoneHref && (
                 <li>
-                  <a href={`tel:${s.phone.replace(/[^\d+]/g, "")}`} dir="ltr">{s.phone}</a>
+                  <a href={d.phoneHref} dir="ltr">{d.phone}</a>
                 </li>
               )}
-              {wa && (
+              {d.whatsappHref && (
                 <li>
-                  <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer">{t.cta.whatsapp}</a>
+                  <a href={d.whatsappHref} target="_blank" rel="noopener noreferrer">
+                    {t.cta.whatsapp}
+                    <span className="sr-only"> {t.cta.newTab}</span>
+                  </a>
                 </li>
               )}
-              {s.email && (
+              {d.emailHref && (
                 <li>
-                  <a href={`mailto:${s.email}`} dir="ltr">{s.email}</a>
+                  <a href={d.emailHref} dir="ltr">{d.email}</a>
                 </li>
               )}
               {address && <li>{address}</li>}

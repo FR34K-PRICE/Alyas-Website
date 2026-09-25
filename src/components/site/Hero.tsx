@@ -32,9 +32,11 @@ export interface HeroProps {
   /** WhatsApp or phone, only when configured in the CMS. */
   secondary?: { href: string; label: string; external: boolean };
   actionsLabel?: string;
+  /** screen-reader text appended to links that open in a new tab */
+  newTabLabel?: string;
 }
 
-export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, foreground, aircraft, secondary, actionsLabel }: HeroProps) {
+export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, foreground, aircraft, secondary, actionsLabel, newTabLabel }: HeroProps) {
   const root = useRef<HTMLElement>(null);
   const plane = useRef<HTMLDivElement>(null);
 
@@ -107,6 +109,7 @@ export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, foregr
             {secondary && (
               <a className="btn btn--light" href={secondary.href} {...(secondary.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
                 {secondary.label}
+                {secondary.external && newTabLabel && <span className="sr-only"> {newTabLabel}</span>}
               </a>
             )}
           </div>
