@@ -44,7 +44,9 @@ export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, videoS
   const plane = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const userStartedVideo = useRef(false);
-  const [showPlayButton, setShowPlayButton] = useState(false);
+  // Keep the manual control visible until playback actually starts. Some mobile browsers
+  // leave play() pending rather than rejecting it when autoplay is blocked.
+  const [showPlayButton, setShowPlayButton] = useState(true);
 
   useEffect(() => {
     const v = video.current;
@@ -142,7 +144,7 @@ export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, videoS
             {/* The poster is the stable reduced-motion and loading fallback. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="hero-bg" src="/video/alyas-cloud-flight-poster.webp" width={1280} height={720} alt="" aria-hidden="true" fetchPriority="high" />
-            <video ref={video} className="hero-video" src={videoSrc} muted loop playsInline preload="none" poster="/video/alyas-cloud-flight-poster.webp" aria-hidden="true" tabIndex={-1} onError={() => setShowPlayButton(true)} />
+            <video ref={video} className="hero-video" src={videoSrc} muted loop playsInline preload="none" poster="/video/alyas-cloud-flight-poster.webp" controls={showPlayButton} aria-hidden={showPlayButton ? undefined : true} tabIndex={showPlayButton ? 0 : -1} onPlaying={() => setShowPlayButton(false)} onError={() => setShowPlayButton(true)} />
             {showPlayButton && <button className="hero-video-play" type="button" onClick={playOnTap}>
               <span aria-hidden="true">▶</span> {videoPlayLabel}
             </button>}
