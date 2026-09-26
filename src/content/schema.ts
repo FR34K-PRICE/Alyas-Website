@@ -145,9 +145,9 @@ export const KINDS: Record<KindKey, KindDef> = {
         bt("headline", "Headline", { max: 40, help: "One strong word works best, e.g. “Explore”. Long headlines are set smaller automatically." }),
         bta("sub", "Supporting text", { max: 200, rows: 3 }),
         bt("primaryCta", "Button", { max: 32 }),
-        img("backdrop", "Hero photograph (optional)", "A wide landscape, at least 2400 px across. Leave empty to use the built-in mountain-lake photograph."),
-        img("foreground", "Foreground cut-out (optional)", "A transparent PNG/WebP of the same photograph's foreground (rocks, plants) so the headline sits behind it. Only used together with your own hero photograph, cropped identically."),
-        img("airplane", "Airplane image (optional)", "A transparent PNG/WebP of an aircraft in flight with its nose pointing right (it is mirrored automatically in Arabic). Leave empty to use the built-in airliner."),
+        img("backdrop", "Hero photograph (optional)", "A wide landscape, at least 2400 px across. Leave empty to show the built-in hero video. Choosing a photograph replaces the video with your photograph and a flying airliner; the header then uses white text, so pick a photograph that is dark at the top."),
+        img("foreground", "Foreground cut-out (optional)", "A transparent PNG/WebP of the same photograph's foreground (rocks, plants) so the headline sits behind it. Only used together with your own hero photograph, cropped identically; it does nothing while the built-in video is shown."),
+        img("airplane", "Airplane image (optional)", "A transparent PNG/WebP of an aircraft in flight with its nose pointing right (it is mirrored automatically in Arabic). Only used together with your own hero photograph (the built-in video has no airplane). Leave empty to use the built-in airliner."),
       ]),
       group("intro", "Introduction", [
         bt("title", "Title", { max: 100 }),

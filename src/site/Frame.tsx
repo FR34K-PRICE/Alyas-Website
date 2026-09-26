@@ -21,7 +21,7 @@ export function SiteStyle({ site }: { site: any }) {
   return <style dangerouslySetInnerHTML={{ __html: `:root{${rules.join(";")}}` }} />;
 }
 
-export function Frame({ lang, base, bundle, media, tone, preview, dock = "always", children }: { lang: Lang; base: string; bundle: SiteBundle; media: MediaMap; tone: "hero" | "solid"; preview?: boolean; dock?: "always" | "after-hero" | "none"; children: React.ReactNode }) {
+export function Frame({ lang, base, bundle, media, tone, preview, dock = "always", children }: { lang: Lang; base: string; bundle: SiteBundle; media: MediaMap; tone: "hero" | "hero-bright" | "solid"; preview?: boolean; dock?: "always" | "after-hero" | "none"; children: React.ReactNode }) {
   const t = DICT[lang];
   const site = bundle.site;
   void media;

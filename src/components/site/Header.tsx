@@ -11,7 +11,8 @@ export interface HeaderProps {
   logo?: string;
   logoLight?: string;
   siteName: string;
-  tone: "hero" | "solid";
+  /** "hero": transparent over a DARK photograph (white text). "hero-bright": transparent over the BRIGHT video (navy text). "solid": white bar. */
+  tone: "hero" | "hero-bright" | "solid";
   /** Custom pages shown in the menu, between Events and Contact. */
   extra?: { path: string; label: string }[];
   labels: { home: string; about: string; travel: string; events: string; contact: string; menu: string; close: string; primary: string; plan: string; switchTo: string; switchShort: string };

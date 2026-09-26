@@ -127,7 +127,30 @@ ok("hero copy is concise (under 150 characters, button included)", heroText(en.t
 ok("hero copy is not keyword-stuffed (no repeated long words)", (() => { const w = enHero.replace(/[^a-z ]/g, "").split(/\s+/).filter((x) => x.length > 4); return new Set(w).size === w.length; })(), enHero);
 ok("one h1 in each language", (en.text.match(/<h1[\s>]/g) || []).length === 1 && (ar.text.match(/<h1[\s>]/g) || []).length === 1);
 ok("hero button opens the contact page in this language", heroCopy(en.text).includes('href="/en/contact"') && heroCopy(ar.text).includes('href="/ar/contact"'));
-ok("the animated airplane is still in the hero", en.text.includes('class="hero-plane"') && ar.text.includes('class="hero-plane"'));
+// The hero is either the built-in VIDEO (no CMS hero photograph) or the PHOTO hero with the flying airplane (a CMS
+// hero photograph is set). Each mode is asserted on its real markup; the photo mode is also exercised with test data
+// in the mutating section below, so neither mode is ever left unchecked.
+const heroSection = (html) => (html.match(/<section class="hero[^"]*"[\s\S]*?<\/section>/) || [""])[0];
+const videoHero = /class="hero hero--video"/.test(en.text);
+console.log(`NOTE  this site currently shows the ${videoHero ? "VIDEO" : "PHOTO (CMS hero photograph)"} hero`);
+for (const [lang, html, playLabel] of [["en", en.text, "Play video"], ["ar", ar.text, "تشغيل الفيديو"]]) {
+  const hs = heroSection(html);
+  if (videoHero) {
+    const video = (hs.match(/<video [^>]*>/) || [""])[0];
+    ok(`${lang}: video hero — a <video> that is muted, loops, plays inline, downloads nothing until needed, with the poster and the built-in file`, /\bmuted=""/.test(video) && /\bloop=""/.test(video) && /playsinline/i.test(video) && /preload="none"/.test(video) && /poster="\/video\/alyas-cloud-flight-poster\.webp"/.test(video) && /src="\/video\/alyas-cloud-flight\.mp4"/.test(video), video.slice(0, 200));
+    ok(`${lang}: video hero — native controls are present in the server HTML (the way to start it if JavaScript never runs)`, /\bcontrols=""/.test(video));
+    ok(`${lang}: video hero — the poster is a decorative image (alt="" aria-hidden) that is the loading and reduced-motion fallback`, /<img class="hero-bg"[^>]*src="\/video\/alyas-cloud-flight-poster\.webp"[^>]*alt=""[^>]*aria-hidden="true"/.test(hs) || /<img class="hero-bg"[^>]*alt=""[^>]*aria-hidden="true"[^>]*src="\/video\/alyas-cloud-flight-poster\.webp"/.test(hs), hs.slice(0, 220));
+    ok(`${lang}: video hero — a visible “${playLabel}” button is in the server HTML`, new RegExp(`<button class="hero-video-play" type="button">[\\s\\S]*?${playLabel}`).test(hs), hs.match(/hero-video-play[\s\S]{0,120}/)?.[0]);
+    ok(`${lang}: video hero — no airplane and no foreground cut-out (the video replaces them)`, !/class="hero-plane"/.test(hs) && !/class="hero-fg"/.test(hs));
+    ok(`${lang}: video hero — the header uses the bright-hero tone (navy text and dark logo over the bright video)`, /<header class="site-header" data-tone="hero-bright"/.test(html), (html.match(/<header[^>]*>/) || [""])[0]);
+  } else {
+    ok(`${lang}: photo hero — the airplane is in the hero`, /class="hero-plane"/.test(hs));
+    ok(`${lang}: photo hero — there is no video and no Play button`, !/<video /.test(hs) && !/hero-video-play/.test(hs) && !/hero--video/.test(hs));
+    ok(`${lang}: photo hero — the header keeps the white-on-dark-photograph tone`, /<header class="site-header" data-tone="hero"/.test(html), (html.match(/<header[^>]*>/) || [""])[0]);
+  }
+}
+ok("the hero video file is served as video/mp4", !videoHero || (await (async () => { const r = await fetch(`${BASE}/video/alyas-cloud-flight.mp4`, { method: "HEAD" }); return r.status === 200 && /^video\/mp4/.test(r.headers.get("content-type") || ""); })()));
+ok("the hero poster image is served", !videoHero || (await fetch(`${BASE}/video/alyas-cloud-flight-poster.webp`, { method: "HEAD" })).status === 200);
 
 /* ---- 3. Contact actions come only from configured details ---- */
 const site = (await call("/api/admin/content/site", { cookie: A })).json?.entry;
@@ -308,6 +331,42 @@ if (MUTATE) {
   }
   const after = await get("/en");
   ok("originals restored: no test contact details or test wording remain", !/alyas-check\.example|9647701234567|9647700000000/.test(after.text) && !heroSub(after.text).includes("people who know Baghdad"));
+}
+
+/* ---- 8. Hero modes with test data: video (default) vs CMS hero photograph + airplane (isolated database only) ---- */
+if (MUTATE) {
+  console.log("\n-- hero modes (video ↔ CMS photograph), restored afterwards --");
+  const { connect } = await import("./lib-cms.mjs");
+  const cmsApi = await connect(BASE, ADMIN_EMAIL, ADMIN_PASSWORD);
+  const snap = await cmsApi.snapshotHome();
+  const hero = async (lang) => heroSection((await get(`/${lang}?hero=${Date.now()}`)).text);
+  try {
+    ok("no CMS hero photograph: the VIDEO hero is shown", (await cmsApi.setHero(snap, {})) && /hero--video/.test(await hero("en")) && /<video /.test(await hero("ar")));
+    const bg = await cmsApi.uploadImage("public/photos/coast-1600.webp", { altEn: "Test coast photograph", altAr: "صورة ساحل للاختبار" });
+    const fg = await cmsApi.uploadImage("public/photos/hero-fg-1280.webp");
+    const plane = await cmsApi.uploadImage("public/photos/aircraft.webp");
+
+    ok("a CMS hero photograph is set (published)", await cmsApi.setHero(snap, { backdrop: bg }));
+    for (const [lang, alt] of [["en", "Test coast photograph"], ["ar", "صورة ساحل للاختبار"]]) {
+      const h = await hero(lang);
+      ok(`${lang}: photo hero — the video is replaced by the CMS photograph, with its ${lang === "en" ? "English" : "Arabic"} alt text`, !/hero--video/.test(h) && !/<video /.test(h) && !/hero-video-play/.test(h) && (new RegExp(`<img class="hero-bg"[^>]*src="/media/${bg}\\?w=1920"[^>]*alt="${alt}"`).test(h) || new RegExp(`<img class="hero-bg"[^>]*alt="${alt}"[^>]*src="/media/${bg}`).test(h)), h.slice(0, 260));
+      ok(`${lang}: photo hero — the header switches to the white tone for the dark photograph`, /<header class="site-header" data-tone="hero"/.test((await get(`/${lang}?tone=${Date.now()}`)).text));
+      ok(`${lang}: photo hero — the built-in airplane flies (the CSS/animation hooks are present)`, /class="hero-plane"[^>]*aria-hidden="true"/.test(h) && /src="\/photos\/aircraft\.webp"/.test(h));
+      ok(`${lang}: photo hero — no foreground cut-out unless one is uploaded (the built-in one only fits the built-in photograph)`, !/class="hero-fg"/.test(h));
+    }
+    ok("photo hero: still exactly one h1 and the same hero copy and buttons", (((await get("/en")).text.match(/<h1[\s>]/g) || []).length === 1) && /hero-copy/.test(await hero("en")) && /href="\/en\/contact"/.test(await hero("en")));
+
+    ok("a CMS foreground cut-out is set as well", await cmsApi.setHero(snap, { backdrop: bg, foreground: fg }));
+    ok("photo hero: the CMS foreground cut-out is layered over the headline", new RegExp(`class="hero-fg"[^>]*src="/media/${fg}`).test(await hero("en")));
+    ok("a CMS airplane image is set as well", await cmsApi.setHero(snap, { backdrop: bg, foreground: fg, airplane: plane }));
+    ok("photo hero: the CMS airplane replaces the built-in one", new RegExp(`class="hero-plane"[\\s\\S]*?src="/media/${plane}\\?w=960"`).test(await hero("en")) && !/\/photos\/aircraft\.webp/.test(await hero("en")));
+
+    ok("a foreground or airplane WITHOUT a hero photograph changes nothing: the video stays", (await cmsApi.setHero(snap, { foreground: fg, airplane: plane })) && /hero--video/.test(await hero("en")) && !/class="hero-fg"/.test(await hero("en")) && !/class="hero-plane"/.test(await hero("en")));
+    ok("clearing the CMS hero photograph brings the video back", (await cmsApi.setHero(snap, {})) && /hero--video/.test(await hero("ar")) && /<video /.test(await hero("ar")));
+  } finally {
+    await cmsApi.restore(snap);
+  }
+  ok("hero test data removed: the site is back to its original hero", /hero--video/.test(await hero("en")) === !snap.data.hero?.backdrop);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

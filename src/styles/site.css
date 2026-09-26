@@ -324,9 +324,25 @@ html[lang="ar"] .mobile-panel a:not(.btn) {
   pointer-events: auto;
 }
 .hero--video .hero-shade {
+  /* Above the video (z-index 2), below the headline: in earlier versions this layer sat UNDER the video and darkened
+     nothing. A smooth full-width gradient keeps the copy readable over bright clouds without a visible patch. */
+  z-index: 3;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(4, 30, 52, 0.26), transparent 25%),
-    linear-gradient(0deg, rgba(4, 29, 48, 0.68), rgba(4, 29, 48, 0.28) 42%, transparent 72%);
+  background: linear-gradient(0deg, rgba(4, 29, 48, 0.82) 0%, rgba(4, 29, 48, 0.64) 26%, rgba(4, 29, 48, 0.3) 50%, transparent 74%);
+}
+/* The phone-only radial scrim was made for the dark photograph; over bright clouds it shows as a dark patch. */
+.hero--video .hero-copy::before {
+  display: none;
+}
+/* The bright video reaches the top of the page, so the header keeps its normal navy text and dark logo (its white
+   variant assumes a dark photograph) and only drops its background until the page is scrolled. */
+.site-header[data-tone="hero-bright"]:not([data-scrolled="true"]):not([data-open="true"]) {
+  background: transparent;
+  border-color: transparent;
+}
+/* The small gold "Travel" / "للسفر" needs 4.5:1; the usual dark gold measured 3.0-3.4:1 on bright cloud frames. */
+.site-header[data-tone="hero-bright"]:not([data-scrolled="true"]):not([data-open="true"]) .wordmark-sub {
+  color: #443409;
 }
 .hero-video-play {
   position: absolute;

@@ -11,7 +11,7 @@ no identifiable faces, and airline branding was removed from the aircraft (see b
 
 | Slot in the site | File(s) in `public/photos` | Photographer | Unsplash page | Unsplash photo ID |
 | --- | --- | --- | --- | --- |
-| Home hero, contact page, travel-page “tailored trips” | `hero-*.webp`, `hero-fg-*.webp` | Roberto Nickson | https://unsplash.com/photos/calm-mountain-lake-reflecting-snowy-peaks-vZ1JAXUO3-0 | `photo-1448518340475-e3c680e9b4be` |
+| Contact page and travel-page “tailored trips” cards (formerly the home hero; the home hero is now the video below, and `hero-fg-*` is unused by default) | `hero-*.webp`, `hero-fg-*.webp` | Roberto Nickson | https://unsplash.com/photos/calm-mountain-lake-reflecting-snowy-peaks-vZ1JAXUO3-0 | `photo-1448518340475-e3c680e9b4be` |
 | Hero aircraft | `aircraft.webp` | Hanson Lu | https://unsplash.com/photos/white-airplane-on-air-459juebgWIQ | `photo-1553431340-5da1bd9101e9` |
 | Hotels | `coast-*.webp` | Chloé Lefleur | https://unsplash.com/photos/a-view-of-a-blue-domed-building-on-the-edge-of-a-cliff-DbBwe7nGr3k | `photo-1678266561093-324802646fb2` |
 | Introduction, About page | `hiker-*.webp` | Rafael Peier | https://unsplash.com/photos/woman-on-rocky-canyon-cliff-VGR5ybvqCpA | `photo-1789335327714-07fbeb84f637` |
@@ -19,6 +19,14 @@ no identifiable faces, and airline branding was removed from the aircraft (see b
 | Flights | `window-*.webp` | Allan Rodrigues | https://unsplash.com/photos/a-view-of-a-mirror-lPuqyUgXFmY | `photo-1662740458576-a6ac7b53611e` |
 | Visa assistance, events, closing call to action | `city-*.webp` | Tarik Sami | https://unsplash.com/photos/maidens-tower-in-istanbul-with-modern-skyline-background-5yVvI23NcqY | `photo-1778083402997-4039f7ff1a97` |
 | Floral (secondary) | `flowers-*.webp` | Alina Karpenko | https://unsplash.com/photos/white-and-beige-rose-flower-bouquet-WCkWGoHHNOM | `photo-1557925923-6885735abfb1` |
+
+### Hero video and poster (not from Unsplash)
+
+| Slot in the site | File(s) in `public/video` | Author / source | Licence |
+| --- | --- | --- | --- |
+| Home hero (the default hero when no CMS hero photograph is set) | `alyas-cloud-flight.mp4`, `alyas-cloud-flight-poster.webp` | **Not recorded in this repository** | **Not recorded** |
+
+**Owner action before launch:** the video and its poster were added on the `preview/hero-video` branch without a source. Confirm who made or supplied them and that ALYAS Travel may use them commercially (if it is generated or stock footage, keep the generator's or licensor's terms), then record the author, source and licence here. The footage shows an airliner; check it carries no third-party airline livery or identifiable registration marks you do not have the right to show. Processing done in this repository: the audio track was removed losslessly (`scripts/strip-mp4-audio.mjs`; the video samples are byte-identical to the supplied file).
 
 ## What was done to the images
 
