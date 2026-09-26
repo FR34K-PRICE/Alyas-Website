@@ -29,6 +29,7 @@ export interface HeroProps {
   photoAlt: string;
   /** Optional cinematic backdrop; the still photo remains the fallback. */
   videoSrc?: string;
+  videoPlayLabel?: string;
   foreground?: HeroImage;
   aircraft: { src: string; width: number; height: number };
   /** WhatsApp or phone, only when configured in the CMS. */
@@ -38,33 +39,57 @@ export interface HeroProps {
   newTabLabel?: string;
 }
 
-export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, videoSrc, foreground, aircraft, secondary, actionsLabel, newTabLabel }: HeroProps) {
+export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, videoSrc, videoPlayLabel = "Play video", foreground, aircraft, secondary, actionsLabel, newTabLabel }: HeroProps) {
   const root = useRef<HTMLElement>(null);
   const plane = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
-  const [playVideo, setPlayVideo] = useState(false);
-
-  useEffect(() => {
-    if (!videoSrc) return;
-    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
-    const update = () => setPlayVideo(!motion.matches && !nav.connection?.saveData);
-    update();
-    motion.addEventListener("change", update);
-    return () => motion.removeEventListener("change", update);
-  }, [videoSrc]);
+  const userStartedVideo = useRef(false);
+  const [showPlayButton, setShowPlayButton] = useState(false);
 
   useEffect(() => {
     const v = video.current;
     const el = root.current;
-    if (!v || !el) return;
+    if (!videoSrc || !v || !el) return;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
+    let visible = false;
+    let autoAllowed = false;
+    const start = () => {
+      if (!visible || (!autoAllowed && !userStartedVideo.current)) return;
+      void v.play().then(() => setShowPlayButton(false)).catch(() => setShowPlayButton(true));
+    };
+    const update = () => {
+      autoAllowed = !motion.matches && !nav.connection?.saveData;
+      if (autoAllowed) start();
+      else if (!userStartedVideo.current) {
+        v.pause();
+        setShowPlayButton(true);
+      }
+    };
     const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) void v.play().catch(() => setPlayVideo(false));
+      visible = entry.isIntersecting;
+      if (visible) start();
       else v.pause();
     }, { threshold: 0.01 });
     io.observe(el);
-    return () => io.disconnect();
-  }, [playVideo]);
+    update();
+    motion.addEventListener("change", update);
+    return () => {
+      io.disconnect();
+      motion.removeEventListener("change", update);
+      v.pause();
+    };
+  }, [videoSrc]);
+
+  const playOnTap = () => {
+    const v = video.current;
+    if (!v) return;
+    userStartedVideo.current = true;
+    void v.play().then(() => setShowPlayButton(false)).catch(() => {
+      userStartedVideo.current = false;
+      setShowPlayButton(true);
+    });
+  };
 
   useEffect(() => {
     const el = root.current;
@@ -117,7 +142,10 @@ export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, videoS
             {/* The poster is the stable reduced-motion and loading fallback. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="hero-bg" src="/video/alyas-cloud-flight-poster.webp" width={1280} height={720} alt="" aria-hidden="true" fetchPriority="high" />
-            {playVideo && <video ref={video} className="hero-video" src={videoSrc} autoPlay muted loop playsInline preload="metadata" poster="/video/alyas-cloud-flight-poster.webp" aria-hidden="true" tabIndex={-1} onError={() => setPlayVideo(false)} />}
+            <video ref={video} className="hero-video" src={videoSrc} muted loop playsInline preload="none" poster="/video/alyas-cloud-flight-poster.webp" aria-hidden="true" tabIndex={-1} onError={() => setShowPlayButton(true)} />
+            {showPlayButton && <button className="hero-video-play" type="button" onClick={playOnTap}>
+              <span aria-hidden="true">▶</span> {videoPlayLabel}
+            </button>}
           </>
         ) : (
           /* eslint-disable-next-line @next/next/no-img-element */

@@ -153,6 +153,7 @@ function heroProps(ctx: Ctx, sub: string): HeroProps {
     newTabLabel: DICT[lang].cta.newTab,
     photo,
     videoSrc: custom ? undefined : "/video/alyas-cloud-flight.mp4",
+    videoPlayLabel: lang === "ar" ? "تشغيل الفيديو" : "Play video",
     photoAlt: custom ? (lang === "ar" ? info?.alt_ar || info?.alt_en : info?.alt_en || info?.alt_ar) || "" : pick(PHOTOS.hero.alt, lang),
     foreground,
     // An airplane from the media library replaces the built-in one; the built-in is the fallback.

@@ -327,8 +327,23 @@ html[lang="ar"] .mobile-panel a:not(.btn) {
   background: linear-gradient(180deg, rgba(4, 30, 52, 0.26), transparent 25%),
     linear-gradient(0deg, rgba(4, 29, 48, 0.68), rgba(4, 29, 48, 0.28) 42%, transparent 72%);
 }
-@media (prefers-reduced-motion: reduce) {
-  .hero-video { display: none; }
+.hero-video-play {
+  position: absolute;
+  z-index: 6;
+  top: clamp(84px, 12%, 130px);
+  inset-inline-end: var(--hero-pad);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: #fff;
+  background: rgba(4, 29, 48, 0.78);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.hero-video-play:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
 }
 .hero-fg {
   z-index: 4;
