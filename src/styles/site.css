@@ -313,6 +313,55 @@ html[lang="ar"] .mobile-panel a:not(.btn) {
 .hero-bg {
   z-index: 0;
 }
+.hero-video {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: auto;
+}
+.hero--video .hero-shade {
+  /* Above the video (z-index 2), below the headline: in earlier versions this layer sat UNDER the video and darkened
+     nothing. A smooth full-width gradient keeps the copy readable over bright clouds without a visible patch. */
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(4, 29, 48, 0.82) 0%, rgba(4, 29, 48, 0.64) 26%, rgba(4, 29, 48, 0.3) 50%, transparent 74%);
+}
+/* The phone-only radial scrim was made for the dark photograph; over bright clouds it shows as a dark patch. */
+.hero--video .hero-copy::before {
+  display: none;
+}
+/* The bright video reaches the top of the page, so the header keeps its normal navy text and dark logo (its white
+   variant assumes a dark photograph) and only drops its background until the page is scrolled. */
+.site-header[data-tone="hero-bright"]:not([data-scrolled="true"]):not([data-open="true"]) {
+  background: transparent;
+  border-color: transparent;
+}
+/* The small gold "Travel" / "للسفر" needs 4.5:1; the usual dark gold measured 3.0-3.4:1 on bright cloud frames. */
+.site-header[data-tone="hero-bright"]:not([data-scrolled="true"]):not([data-open="true"]) .wordmark-sub {
+  color: #443409;
+}
+.hero-video-play {
+  position: absolute;
+  z-index: 6;
+  top: clamp(84px, 12%, 130px);
+  inset-inline-end: var(--hero-pad);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  padding: 10px 16px;
+  color: #fff;
+  background: rgba(4, 29, 48, 0.78);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.hero-video-play:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
 .hero-fg {
   z-index: 4;
   pointer-events: none;
@@ -1608,4 +1657,25 @@ html[lang="ar"] .also-copy p {
   body:has(.mobile-panel:not([hidden])) .dock {
     visibility: hidden;
   }
+}
+
+/* Opt-in playback diagnostics for testing on a phone (open the page with ?videodebug=1). Not shown otherwise. */
+.hero-video-debug {
+  position: absolute;
+  z-index: 20;
+  inset-inline: 8px;
+  top: 70px;
+  max-height: 46%;
+  margin: 0;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.82);
+  color: #8dff6a;
+  font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  direction: ltr;
+  text-align: left;
 }

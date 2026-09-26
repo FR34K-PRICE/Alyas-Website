@@ -16,6 +16,7 @@
     "check:home": "node scripts/home-check.mjs",
     "check:audit": "node scripts/audit-check.mjs",
     "check:motion": "node scripts/motion-check.mjs",
+    "check:video": "node scripts/video-check.mjs",
     "audit:content": "node scripts/audit-content.mjs",
     "typecheck": "tsc --noEmit",
     "prepare-photos": "node scripts/prepare-photos.mjs"

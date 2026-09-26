@@ -94,6 +94,9 @@ export async function SitePage({ lang, slug, preview, search }: { lang: Lang; sl
   const { bundle, media } = await load(preview);
   const base = preview ? `/preview/${lang}` : `/${lang}`;
   const ctx = { lang, base, b: bundle, media, search };
+  // Same rule as heroProps(): with no usable CMS hero photograph the homepage hero is the (bright) video.
+  const backdrop = bundle.home.hero.backdrop;
+  const videoHero = slug === "" && !(backdrop && media[backdrop]);
   let body: React.ReactNode;
   if (isBuiltInSlug(slug)) {
     const s: BuiltInSlug = slug;
@@ -104,7 +107,7 @@ export async function SitePage({ lang, slug, preview, search }: { lang: Lang; sl
     body = <CustomPage ctx={ctx} page={page} />;
   }
   return (
-    <Frame lang={lang} base={base} bundle={bundle} media={media} tone={slug === "" ? "hero" : "solid"} preview={preview} dock={slug === "" ? "after-hero" : slug === "contact" ? "none" : "always"}>
+    <Frame lang={lang} base={base} bundle={bundle} media={media} tone={slug === "" ? (videoHero ? "hero-bright" : "hero") : "solid"} preview={preview} dock={slug === "" ? "after-hero" : slug === "contact" ? "none" : "always"}>
       {body}
     </Frame>
   );
