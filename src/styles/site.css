@@ -1642,3 +1642,24 @@ html[lang="ar"] .also-copy p {
     visibility: hidden;
   }
 }
+
+/* Opt-in playback diagnostics for testing on a phone (open the page with ?videodebug=1). Not shown otherwise. */
+.hero-video-debug {
+  position: absolute;
+  z-index: 20;
+  inset-inline: 8px;
+  top: 70px;
+  max-height: 46%;
+  margin: 0;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.82);
+  color: #8dff6a;
+  font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  direction: ltr;
+  text-align: left;
+}
