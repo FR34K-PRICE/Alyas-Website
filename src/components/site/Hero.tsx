@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * The opening: one large destination photograph, an oversized headline, and a foreground layer
@@ -27,6 +27,8 @@ export interface HeroProps {
   ctaHref: string;
   photo: HeroImage;
   photoAlt: string;
+  /** Optional cinematic backdrop; the still photo remains the fallback. */
+  videoSrc?: string;
   foreground?: HeroImage;
   aircraft: { src: string; width: number; height: number };
   /** WhatsApp or phone, only when configured in the CMS. */
@@ -36,14 +38,38 @@ export interface HeroProps {
   newTabLabel?: string;
 }
 
-export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, foreground, aircraft, secondary, actionsLabel, newTabLabel }: HeroProps) {
+export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, videoSrc, foreground, aircraft, secondary, actionsLabel, newTabLabel }: HeroProps) {
   const root = useRef<HTMLElement>(null);
   const plane = useRef<HTMLDivElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const [playVideo, setPlayVideo] = useState(false);
+
+  useEffect(() => {
+    if (!videoSrc) return;
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
+    const update = () => setPlayVideo(!motion.matches && !nav.connection?.saveData);
+    update();
+    motion.addEventListener("change", update);
+    return () => motion.removeEventListener("change", update);
+  }, [videoSrc]);
+
+  useEffect(() => {
+    const v = video.current;
+    const el = root.current;
+    if (!v || !el) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) void v.play().catch(() => setPlayVideo(false));
+      else v.pause();
+    }, { threshold: 0.01 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [playVideo]);
 
   useEffect(() => {
     const el = root.current;
     const p = plane.current;
-    if (!el || !p) return;
+    if (!el || !p || videoSrc) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; // stays parked, fully visible
     if (typeof p.animate !== "function") return;
 
@@ -81,22 +107,31 @@ export function Hero({ headline, sub, ctaLabel, ctaHref, photo, photoAlt, foregr
       io.disconnect();
       anim.cancel();
     };
-  }, []);
+  }, [videoSrc]);
 
   return (
-    <section ref={root} className="hero" aria-labelledby="hero-title">
+    <section ref={root} className={`hero${videoSrc ? " hero--video" : ""}`} aria-labelledby="hero-title">
       <div className="hero-frame">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="hero-bg" src={photo.src} srcSet={photo.srcSet} sizes="100vw" width={photo.width} height={photo.height} alt={photoAlt} fetchPriority="high" decoding="async" />
+        {videoSrc ? (
+          <>
+            {/* The poster is the stable reduced-motion and loading fallback. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="hero-bg" src="/video/alyas-cloud-flight-poster.webp" width={1280} height={720} alt="" aria-hidden="true" fetchPriority="high" />
+            {playVideo && <video ref={video} className="hero-video" src={videoSrc} autoPlay muted loop playsInline preload="metadata" poster="/video/alyas-cloud-flight-poster.webp" aria-hidden="true" tabIndex={-1} onError={() => setPlayVideo(false)} />}
+          </>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img className="hero-bg" src={photo.src} srcSet={photo.srcSet} sizes="100vw" width={photo.width} height={photo.height} alt={photoAlt} fetchPriority="high" decoding="async" />
+        )}
         <div className="hero-shade" aria-hidden="true" />
-        <div ref={plane} className="hero-plane" aria-hidden="true">
+        {!videoSrc && <div ref={plane} className="hero-plane" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={aircraft.src} width={aircraft.width} height={aircraft.height} alt="" decoding="async" />
-        </div>
+        </div>}
         <h1 id="hero-title" className="hero-title" data-long={headline.length > 11 ? "true" : undefined}>
           {headline}
         </h1>
-        {foreground && (
+        {!videoSrc && foreground && (
           // eslint-disable-next-line @next/next/no-img-element
           <img className="hero-fg" src={foreground.src} srcSet={foreground.srcSet} sizes="100vw" width={foreground.width} height={foreground.height} alt="" aria-hidden="true" decoding="async" />
         )}
